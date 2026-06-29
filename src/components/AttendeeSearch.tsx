@@ -119,11 +119,8 @@ export default function AttendeeSearch({ onSelect }: AttendeeSearchProps) {
                               <p className="font-medium text-gray-800 dark:text-white text-sm truncate">{highlightName(attendee.name, query)}</p>
                               <span className={`text-[10px] font-medium ${status.cls}`}>{status.label}</span>
                             </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-xs text-gray-400 dark:text-slate-500 truncate">{attendee.department}</span>
-                              <span className="text-xs text-gray-300 dark:text-slate-600">·</span>
-                              <span className="text-xs text-gray-400 dark:text-slate-500 truncate">{attendee.position}</span>
-                            </div>
+                            <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5">{attendee.department} · {attendee.position}</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">{attendee.email} · {attendee.phone || 'No phone'}</p>
                           </div>
                           {isHighlighted && <span className="text-[10px] text-blue-500 dark:text-blue-400 font-medium shrink-0 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded">Enter ↵</span>}
                         </button>

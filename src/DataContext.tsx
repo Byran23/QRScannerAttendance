@@ -30,12 +30,13 @@ interface DataContextType {
   synced: boolean;
   refreshData: () => Promise<void>;
 
-  addAttendee: (data: Omit<Attendee, 'id' | 'createdAt'>) => Promise<void>;
+  addAttendee: (data: Omit<Attendee, 'id' | 'createdAt'>) => Promise<Attendee>;
   updateAttendee: (attendee: Attendee) => Promise<void>;
   deleteAttendee: (id: string) => Promise<void>;
   getAttendeeById: (id: string) => Attendee | undefined;
 
   addRecord: (attendee: Attendee, type: 'check-in' | 'check-out') => Promise<AttendanceRecord>;
+  deleteRecord: (id: string) => Promise<void>;
   clearRecords: () => Promise<void>;
   getAttendeeLastAction: (attendeeId: string) => AttendanceRecord | undefined;
 }
@@ -152,6 +153,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // Always save to localStorage
     const next = [...lsGet<Attendee>(LS_ATTENDEES), attendee];
     lsSet(LS_ATTENDEES, next);
+
+    return attendee;
   }, [synced]);
 
   const updateAttendeeFn = useCallback(async (attendee: Attendee) => {
@@ -220,6 +223,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return record;
   }, [synced]);
 
+  const deleteRecordFn = useCallback(async (id: string) => {
+    // Optimistic update
+    setRecords(prev => prev.filter(r => r.id !== id));
+
+    if (synced) {
+      try {
+        await gsPost('deleteRecord', { id });
+      } catch (err) {
+        console.error('Failed to delete record:', err);
+      }
+    }
+
+    const next = lsGet<AttendanceRecord>(LS_RECORDS).filter(r => r.id !== id);
+    lsSet(LS_RECORDS, next);
+  }, [synced]);
+
   const clearRecordsFn = useCallback(async () => {
     // Optimistic update
     setRecords([]);
@@ -256,6 +275,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deleteAttendee: deleteAttendeeFn,
         getAttendeeById,
         addRecord: addRecordFn,
+        deleteRecord: deleteRecordFn,
         clearRecords: clearRecordsFn,
         getAttendeeLastAction,
       }}

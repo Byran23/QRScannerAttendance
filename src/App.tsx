@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, ScanLine, ClipboardList, Menu, X, Sun, Moon, Wifi, WifiOff } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import AttendeeList from './components/AttendeeList';
@@ -6,6 +6,7 @@ import AddEditAttendee from './components/AddEditAttendee';
 import QRScanner from './components/QRScanner';
 import QRCodeView from './components/QRCodeView';
 import AttendanceLog from './components/AttendanceLog';
+import RegistrationForm from './components/RegistrationForm';
 import { Page, Attendee } from './types';
 import { useTheme } from './ThemeContext';
 import { useData } from './DataContext';
@@ -22,10 +23,35 @@ export default function App() {
   const [pageData, setPageData] = useState<Attendee | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const { theme, toggleTheme, isDark } = useTheme();
   const { loading, synced } = useData();
 
   void theme;
+
+  // Detect #register in URL — once in register mode, lock them in
+  useEffect(() => {
+    const checkHash = () => {
+      if (window.location.hash === '#register') {
+        setIsRegisterMode(true);
+      }
+    };
+    checkHash();
+    window.addEventListener('hashchange', checkHash);
+    return () => window.removeEventListener('hashchange', checkHash);
+  }, []);
+
+  // If register mode, block any hash changes back to admin
+  useEffect(() => {
+    if (!isRegisterMode) return;
+    const lockHash = () => {
+      if (window.location.hash !== '#register') {
+        window.location.hash = '#register';
+      }
+    };
+    window.addEventListener('hashchange', lockHash);
+    return () => window.removeEventListener('hashchange', lockHash);
+  }, [isRegisterMode]);
 
   const navigate = (page: Page, data?: Attendee | null) => {
     setCurrentPage(page);
@@ -34,6 +60,11 @@ export default function App() {
     setRefreshKey(k => k + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // If #register mode, show only the registration form — no way to admin
+  if (isRegisterMode) {
+    return <RegistrationForm />;
+  }
 
   const renderPage = () => {
     if (loading) {
@@ -138,7 +169,7 @@ export default function App() {
                   ? 'bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-400'
                   : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
               }`}
-              title={synced ? 'Synced across devices via Firestore' : 'Local only — add Firebase config to enable sync'}
+              title={synced ? 'Synced via Google Sheets' : 'Local only — configure Google Sheets to enable sync'}
             >
               {synced ? <Wifi size={12} /> : <WifiOff size={12} />}
               {synced ? 'Synced' : 'Local'}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -13,6 +13,43 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const registrationLink = `${window.location.origin}${window.location.pathname}#register`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(registrationLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Fallback
+      const input = document.createElement('input');
+      input.value = registrationLink;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
+
+  const handleShareLink = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'AttendEase Registration',
+          text: 'Register as an attendee and get your QR code:',
+          url: registrationLink,
+        });
+      } catch {
+        // User cancelled
+      }
+    } else {
+      handleCopyLink();
+    }
+  };
 
   const departments = [...new Set(attendees.map(a => a.department))];
 
@@ -40,6 +77,39 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         <button onClick={() => onNavigate('add-attendee')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30">
           <Plus size={18} /> Add New
         </button>
+      </div>
+
+      {/* Share Registration Form */}
+      <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Share2 size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Registration Form</p>
+              <p className="text-[10px] text-blue-600 dark:text-blue-400 truncate">Share the link so attendees can self-register</p>
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={handleCopyLink}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                linkCopied
+                  ? 'bg-green-600 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              {linkCopied ? <Check size={14} /> : <Link size={14} />}
+              {linkCopied ? 'Copied!' : 'Copy Link'}
+            </button>
+            <button
+              onClick={handleShareLink}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700 transition-all border border-blue-200 dark:border-blue-800"
+            >
+              <Share2 size={14} />
+              Share
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -78,11 +148,8 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                         {status === 'present' ? 'Present' : status === 'checked-out' ? 'Left' : 'Absent'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 dark:text-slate-400 truncate">{attendee.email}</p>
-                    <div className="flex gap-3 mt-1">
-                      <span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-slate-800 px-2 py-0.5 rounded">{attendee.department}</span>
-                      <span className="text-xs text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-slate-800 px-2 py-0.5 rounded">{attendee.position}</span>
-                    </div>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 truncate">{attendee.department} · {attendee.position}</p>
+                    <p className="text-sm text-gray-400 dark:text-slate-500 truncate mt-1">{attendee.email} · {attendee.phone || 'No phone'}</p>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button onClick={() => onNavigate('qr-view', attendee)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg text-blue-600 dark:text-blue-400 transition-colors" title="View QR Code"><QrCode size={18} /></button>

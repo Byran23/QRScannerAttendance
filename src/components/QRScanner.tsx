@@ -119,8 +119,8 @@ export default function QRScanner() {
               <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-3">Confirm Attendance</p>
               <div className={`w-16 h-16 rounded-full ${getInitialsBg(pendingScan.attendee.name)} flex items-center justify-center text-white text-xl font-bold mx-auto mb-3`}>{getInitials(pendingScan.attendee.name)}</div>
               <h3 className="text-lg font-bold text-gray-800 dark:text-white">{pendingScan.attendee.name}</h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400">{pendingScan.attendee.email}</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{pendingScan.attendee.department} · {pendingScan.attendee.position}</p>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{pendingScan.attendee.department} · {pendingScan.attendee.position}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{pendingScan.attendee.email} · {pendingScan.attendee.phone || 'No phone'}</p>
               <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${pendingScan.actionType === 'check-in' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400' : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400'}`}>{pendingScan.actionType === 'check-in' ? '↓ Check In' : '↑ Check Out'}</div>
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
               <div className="flex gap-3 mt-5">

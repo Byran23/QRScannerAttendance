@@ -94,8 +94,8 @@ export default function QRCodeView({ attendee, onNavigate }: QRCodeViewProps) {
           {getInitials(attendee.name)}
         </div>
         <h2 className="text-xl font-bold text-gray-800 dark:text-white">{attendee.name}</h2>
-        <p className="text-gray-500 dark:text-slate-400 text-sm">{attendee.email}</p>
-        <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">{attendee.department} · {attendee.position}</p>
+        <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">{attendee.department} · {attendee.position}</p>
+        <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">{attendee.email} · {attendee.phone || 'No phone'}</p>
 
         <div
           ref={qrRef}

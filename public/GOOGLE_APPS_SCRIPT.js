@@ -136,6 +136,15 @@ function doPost(e) {
     }
     
     // ─── RECORDS ───
+    else if (action === 'deleteRecord') {
+      const sheet = getSheet('Records');
+      const rowIndex = findRowById(sheet, data.id);
+      
+      if (rowIndex > 0) {
+        sheet.deleteRow(rowIndex);
+      }
+    }
+    
     else if (action === 'addRecord') {
       const sheet = getSheet('Records');
       const record = data.record;
