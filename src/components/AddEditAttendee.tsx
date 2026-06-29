@@ -25,8 +25,7 @@ export default function AddEditAttendee({ onNavigate, editData }: AddEditAttende
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = 'Name is required';
-    if (!form.email.trim()) errs.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Invalid email format';
+    if (form.email.trim() && !/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Invalid email format';
     if (!form.department.trim()) errs.department = 'Department/Office is required';
     if (!form.position.trim()) errs.position = 'Position is required';
     setErrors(errs);
@@ -70,7 +69,7 @@ export default function AddEditAttendee({ onNavigate, editData }: AddEditAttende
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField label="Full Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} error={errors.name} placeholder="Juan Dela Cruz" />
-            <InputField label="Email" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" />
+            <InputField label="Email (optional)" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" />
             <InputField label="Department/Office" value={form.department} onChange={v => setForm(f => ({ ...f, department: v }))} error={errors.department} placeholder="Engineering" />
             <InputField label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Software Engineer" />
             <InputField label="Phone (optional)" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="+1 (555) 123-4567" />
