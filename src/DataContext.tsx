@@ -84,6 +84,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletedIds] = useState(new Set<string>()); // Track IDs being deleted
   const synced = isGoogleSheetsConfigured();
 
   // Fetch data from Google Sheets or localStorage
@@ -91,8 +92,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (synced) {
       try {
         const data = await gsGet();
-        setAttendees(data.attendees);
-        setRecords(data.records);
+        
+        // Filter out items that we know we just deleted locally
+        const filteredAttendees = data.attendees.filter(a => !deletedIds.has(a.id));
+        const filteredRecords = data.records.filter(r => !deletedIds.has(r.id));
+
+        setAttendees(filteredAttendees);
+        setRecords(filteredRecords);
         // Mirror to localStorage for offline fallback
         lsSet(LS_ATTENDEES, data.attendees);
         lsSet(LS_RECORDS, data.records);
@@ -174,7 +180,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [synced]);
 
   const deleteAttendeeFn = useCallback(async (id: string) => {
-    // Optimistic update
+    deletedIds.add(id); // Mark as deleted locally
     setAttendees(prev => prev.filter(a => a.id !== id));
 
     if (synced) {
@@ -182,12 +188,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         await gsPost('deleteAttendee', { id });
       } catch (err) {
         console.error('Failed to delete attendee:', err);
+        deletedIds.delete(id); // Revert on failure
       }
     }
     
     const next = lsGet<Attendee>(LS_ATTENDEES).filter(a => a.id !== id);
     lsSet(LS_ATTENDEES, next);
-  }, [synced]);
+  }, [synced, deletedIds]);
 
   const getAttendeeById = useCallback(
     (id: string) => attendees.find(a => a.id === id),
@@ -206,7 +213,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       type,
     };
 
-    // Optimistic update
     setRecords(prev => [record, ...prev]);
 
     if (synced) {
@@ -224,21 +230,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [synced]);
 
   const deleteRecordFn = useCallback(async (id: string) => {
+    deletedIds.add(id); // Mark as deleted locally
     const next = records.filter(r => r.id !== id);
 
-    // Optimistic update
     setRecords(next);
     lsSet(LS_RECORDS, next);
 
     if (synced) {
       try {
-        // Rewrite the full Records tab to guarantee the deletion persists
         await gsPost('replaceRecords', { records: next });
       } catch (err) {
         console.error('Failed to delete record:', err);
+        deletedIds.delete(id); // Revert on failure
       }
     }
-  }, [synced, records]);
+  }, [synced, records, deletedIds]);
 
   const clearRecordsFn = useCallback(async () => {
     // Optimistic update
