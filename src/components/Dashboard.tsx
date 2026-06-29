@@ -50,6 +50,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   const cancelScan = () => setPendingScan(null);
 
+  const attendancePct = totalAttendees > 0 ? Math.round((checkedInToday.size / totalAttendees) * 100) : 0;
+
   return (
     <div className="space-y-6">
       {/* Greeting */}
@@ -75,6 +77,18 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <p className="text-2xl font-bold">{absentCount}</p>
           <p className="text-xs opacity-75">Absent</p>
         </div>
+      </div>
+
+      {/* Attendance Rate — directly after Total/Present/Absent */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Attendance Rate</h3>
+          <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{attendancePct}%</span>
+        </div>
+        <div className="relative w-full h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-orange-500 rounded-full transition-all duration-1000" style={{ width: `${attendancePct}%` }} />
+        </div>
+        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">{checkedInToday.size} of {totalAttendees} attendees checked in today</p>
       </div>
 
       {/* Manual Entry */}
@@ -161,18 +175,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <button onClick={() => onNavigate('log')} className="w-full text-center text-sm text-blue-600 dark:text-blue-400 font-medium hover:underline">View Full Log →</button>
           </div>
         )}
-      </div>
-
-      {/* Attendance Rate */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Attendance Rate</h3>
-          <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{totalAttendees > 0 ? Math.round((checkedInToday.size / totalAttendees) * 100) : 0}%</span>
-        </div>
-        <div className="relative w-full h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-orange-500 rounded-full transition-all duration-1000" style={{ width: `${totalAttendees > 0 ? (checkedInToday.size / totalAttendees) * 100 : 0}%` }} />
-        </div>
-        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">{checkedInToday.size} of {totalAttendees} attendees checked in today</p>
       </div>
     </div>
   );

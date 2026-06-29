@@ -29,7 +29,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     let active = true;
 
     const loadPins = async () => {
-      // If not configured, use hidden fallback only
       if (!sheetsConfigured) {
         if (active) {
           setAllowedPins([FALLBACK_PIN]);
@@ -46,7 +45,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           setAllowedPins(pins);
           setSheetUnavailable(false);
         } else {
-          // No pins configured in sheet — keep hidden fallback to avoid lockout
           setAllowedPins([FALLBACK_PIN]);
           setSheetUnavailable(true);
         }
@@ -128,7 +126,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 flex items-center justify-center p-4 transition-colors">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <ScanLine size={32} className="text-white" />
@@ -137,7 +134,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">QR Attendance System</p>
         </div>
 
-        {/* Login Card */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
           <div className="flex items-center justify-center gap-2 mb-6">
             <Lock size={18} className="text-blue-600 dark:text-blue-400" />
@@ -148,7 +144,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             Enter the 4-digit PIN to access the dashboard
           </p>
 
-          {/* Google Sheets PIN status */}
           {sheetUnavailable && sheetsConfigured && (
             <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-xl flex items-start gap-2.5">
               <CloudOff size={16} className="text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
@@ -158,7 +153,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </div>
           )}
 
-          {/* PIN Input */}
           <div className={`flex justify-center gap-3 mb-6 ${shaking ? 'animate-shake' : ''}`}>
             {pin.map((digit, idx) => (
               <input
@@ -181,7 +175,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             ))}
           </div>
 
-          {/* Show/Hide PIN */}
           <button
             onClick={() => setShowPin(!showPin)}
             disabled={loadingPins}
@@ -191,7 +184,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             {showPin ? 'Hide PIN' : 'Show PIN'}
           </button>
 
-          {/* Loading */}
           {loadingPins && (
             <div className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-slate-400 animate-fade-in">
               <Loader2 size={16} className="animate-spin" />
@@ -199,7 +191,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </div>
           )}
 
-          {/* Error */}
           {!loadingPins && error && (
             <p className="text-center text-sm text-red-600 dark:text-red-400 font-medium animate-fade-in">
               Incorrect PIN. Try again.
