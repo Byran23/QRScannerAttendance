@@ -102,18 +102,6 @@ export default function App() {
     }
   };
 
-  const getPageTitle = () => {
-    switch (currentPage) {
-      case 'dashboard': return 'Dashboard';
-      case 'attendees': return 'Attendees';
-      case 'add-attendee': return 'Add Attendee';
-      case 'edit-attendee': return 'Edit Attendee';
-      case 'scanner': return 'QR Scanner';
-      case 'qr-view': return 'QR Code';
-      case 'log': return 'Attendance Log';
-      default: return 'Dashboard';
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
@@ -183,12 +171,7 @@ export default function App() {
             >
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <div className="text-right hidden sm:block">
-              <p className="text-xs text-gray-400 dark:text-slate-500">{getPageTitle()}</p>
-              <p className="text-xs text-gray-300 dark:text-slate-600">
-                {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </p>
-            </div>
+
           </div>
         </div>
 

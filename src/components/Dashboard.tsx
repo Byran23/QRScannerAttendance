@@ -54,7 +54,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     <div className="space-y-6">
       {/* Greeting */}
       <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500 rounded-2xl p-6 text-white shadow-xl">
-        <h1 className="text-2xl font-bold">{greeting}! 👋</h1>
+        <h1 className="text-2xl font-bold">{greeting}!</h1>
         <p className="text-blue-100 mt-1">{dateStr}</p>
       </div>
 

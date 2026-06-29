@@ -8,11 +8,14 @@ interface SwipeableRowProps {
 
 const DELETE_THRESHOLD = 80;
 const SNAP_WIDTH = 80;
+const DRAG_THRESHOLD = 8;
 
 export default function SwipeableRow({ children, onDelete }: SwipeableRowProps) {
   const startXRef = useRef(0);
   const currentXRef = useRef(0);
   const pointerIdRef = useRef<number | null>(null);
+  const dragMovedRef = useRef(false);
+  const suppressClickRef = useRef(false);
   const [offset, setOffset] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [swiping, setSwiping] = useState(false);
@@ -40,6 +43,8 @@ export default function SwipeableRow({ children, onDelete }: SwipeableRowProps) 
     pointerIdRef.current = e.pointerId;
     startXRef.current = e.clientX;
     currentXRef.current = offset;
+    dragMovedRef.current = false;
+    suppressClickRef.current = false;
     setSwiping(true);
     e.currentTarget.setPointerCapture?.(e.pointerId);
   }, [offset]);
@@ -47,6 +52,10 @@ export default function SwipeableRow({ children, onDelete }: SwipeableRowProps) 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!swiping || pointerIdRef.current !== e.pointerId) return;
     const diff = startXRef.current - e.clientX;
+    if (Math.abs(diff) > DRAG_THRESHOLD) {
+      dragMovedRef.current = true;
+      suppressClickRef.current = true;
+    }
     setOffset(clampOffset(currentXRef.current + diff));
   }, [swiping]);
 
@@ -55,6 +64,12 @@ export default function SwipeableRow({ children, onDelete }: SwipeableRowProps) 
     pointerIdRef.current = null;
     finishSwipe(offset);
     e.currentTarget.releasePointerCapture?.(e.pointerId);
+
+    if (dragMovedRef.current) {
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 50);
+    }
   }, [finishSwipe, offset]);
 
   const handlePointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -62,6 +77,9 @@ export default function SwipeableRow({ children, onDelete }: SwipeableRowProps) 
     pointerIdRef.current = null;
     finishSwipe(offset);
     e.currentTarget.releasePointerCapture?.(e.pointerId);
+    window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 50);
   }, [finishSwipe, offset]);
 
   const close = useCallback(() => {
@@ -82,6 +100,7 @@ export default function SwipeableRow({ children, onDelete }: SwipeableRowProps) 
   };
 
   const handleContentClick = () => {
+    if (suppressClickRef.current) return;
     if (isOpen) close();
   };
 
