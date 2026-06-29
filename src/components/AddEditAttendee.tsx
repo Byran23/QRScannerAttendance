@@ -25,8 +25,8 @@ export default function AddEditAttendee({ onNavigate, editData }: AddEditAttende
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = 'Name is required';
-    if (!form.email.trim()) errs.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Invalid email format';
+    // if (!form.email.trim()) errs.email = 'Email is required';
+    // else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Invalid email format';
     if (!form.department.trim()) errs.department = 'Department/Office is required';
     if (!form.position.trim()) errs.position = 'Position is required';
     setErrors(errs);
