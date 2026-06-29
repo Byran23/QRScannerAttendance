@@ -238,31 +238,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [synced, refreshData]);
 
   const deleteRecordFn = useCallback(async (id: string) => {
-    // Tombstone first — ensures it never reappears
-    deletedRecordIdsRef.current.add(id);
-    lsSetSet(LS_DELETED_RECORDS, deletedRecordIdsRef.current);
-
     const next = records.filter(r => r.id !== id);
+
+    // Optimistic UI update
     setRecords(next);
     lsSet(LS_RECORDS, next);
     mutationCooldownRef.current = Date.now();
 
     if (synced) {
-      // Try single-row delete first, then full replace as fallback
       try {
+        // Preferred path: physically delete the exact row from the Records tab
         await gsPost('deleteRecord', { id });
-      } catch (e) {
-        console.warn('deleteRecord single failed, trying replaceRecords', e);
-      }
-      // Always also replace the full list — guarantees deletion
-      try {
-        await gsPost('replaceRecords', { records: next });
       } catch (err) {
-        console.error('replaceRecords failed', err);
+        console.warn('deleteRecord failed; falling back to replaceRecords', err);
+        try {
+          // Fallback: rebuild the Records tab from remaining records
+          await gsPost('replaceRecords', { records: next });
+        } catch (replaceErr) {
+          console.error('replaceRecords fallback failed', replaceErr);
+        }
       }
-      // Verify after a delay
-      setTimeout(refreshData, 1500);
+
+      // Re-sync from the sheet itself so the UI matches the actual Records tab
+      setTimeout(() => {
+        mutationCooldownRef.current = 0;
+        void refreshData();
+      }, 800);
+      return;
     }
+
+    mutationCooldownRef.current = 0;
   }, [synced, records, refreshData]);
 
   const clearRecordsFn = useCallback(async () => {
