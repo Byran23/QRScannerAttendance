@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, ScanLine, ClipboardList, Menu, X, Sun, Moon, Wifi, WifiOff } from 'lucide-react';
+import { LayoutDashboard, Users, ScanLine, ClipboardList, Menu, X, Sun, Moon, Wifi, WifiOff, LogOut } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import AttendeeList from './components/AttendeeList';
 import AddEditAttendee from './components/AddEditAttendee';
@@ -7,6 +7,7 @@ import QRScanner from './components/QRScanner';
 import QRCodeView from './components/QRCodeView';
 import AttendanceLog from './components/AttendanceLog';
 import RegistrationForm from './components/RegistrationForm';
+import LoginPage, { isAuthenticated, logout } from './components/LoginPage';
 import { Page, Attendee } from './types';
 import { useTheme } from './ThemeContext';
 import { useData } from './DataContext';
@@ -24,6 +25,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [authed, setAuthed] = useState(isAuthenticated);
   const { theme, toggleTheme, isDark } = useTheme();
   const { loading, synced } = useData();
 
@@ -61,9 +63,21 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // If #register mode, show only the registration form — no way to admin
+  const handleLogout = () => {
+    logout();
+    setAuthed(false);
+    setCurrentPage('dashboard');
+    setMobileMenuOpen(false);
+  };
+
+  // Registration form — no login required
   if (isRegisterMode) {
     return <RegistrationForm />;
+  }
+
+  // Login gate — admin must enter PIN
+  if (!authed) {
+    return <LoginPage onLogin={() => setAuthed(true)} />;
   }
 
   const renderPage = () => {
@@ -101,7 +115,6 @@ export default function App() {
         return <Dashboard key={refreshKey} onNavigate={navigate} />;
     }
   };
-
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
@@ -172,6 +185,14 @@ export default function App() {
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              className="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/50 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all"
+              title="Log Out"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </div>
 
@@ -197,6 +218,13 @@ export default function App() {
                   </button>
                 );
               })}
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-all"
+              >
+                <LogOut size={20} />
+                Log Out
+              </button>
             </nav>
           </div>
         )}

@@ -35,3 +35,17 @@ export function isGoogleSheetsConfigured(): boolean {
     GOOGLE_SHEETS_CONFIG.WEB_APP_URL.includes('script.google.com')
   );
 }
+
+export async function fetchAdminPins(): Promise<string[]> {
+  if (!isGoogleSheetsConfigured()) return [];
+  const url = `${GOOGLE_SHEETS_CONFIG.WEB_APP_URL}?action=getPins&t=${Date.now()}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || 'Failed to fetch pins');
+
+  return (data.pins || [])
+    .map((pin: unknown) => String(pin).trim())
+    .filter((pin: string) => pin.length > 0)
+    .map((pin: string) => pin.padStart(4, '0'));
+}

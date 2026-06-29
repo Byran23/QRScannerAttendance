@@ -15,9 +15,12 @@
  * 9. Click "Deploy" and authorize when prompted
  * 10. Copy the Web App URL
  *
- * Your Google Sheet must have two sheets (tabs):
+ * Your Google Sheet must have three sheets (tabs):
  * - "Attendees" with headers: id, name, email, department, position, phone, createdAt
  * - "Records" with headers: id, attendeeId, attendeeName, attendeeEmail, attendeeDepartment, timestamp, type
+ * - "AdminPins" with headers: pin, label, active
+ *   Example row: 1234 | Main Admin | TRUE
+ *   Tip: format the pin column as Plain text to preserve leading zeros.
  */
 
 function getSheet(name) {
@@ -42,7 +45,6 @@ function sheetToObjects(sheet) {
     .filter(obj => obj.id && String(obj.id).trim() !== '');
 }
 
-// Find row index by ID (1-indexed, accounting for header)
 function findRowById(sheet, id) {
   const data = sheet.getDataRange().getValues();
   const target = String(id).trim();
@@ -52,21 +54,66 @@ function findRowById(sheet, id) {
   return -1;
 }
 
-// Replace all used rows below the header.
-// This PHYSICALLY deletes rows in the sheet so removed records do not remain behind.
+function findRecordRow(sheet, record) {
+  if (!record) return -1;
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const matches =
+      String(row[0]).trim() === String(record.id || '').trim() ||
+      (
+        String(row[1]).trim() === String(record.attendeeId || '').trim() &&
+        String(row[2]).trim() === String(record.attendeeName || '').trim() &&
+        String(row[3]).trim() === String(record.attendeeEmail || '').trim() &&
+        String(row[4]).trim() === String(record.attendeeDepartment || '').trim() &&
+        String(row[5]).trim() === String(record.timestamp || '').trim() &&
+        String(row[6]).trim() === String(record.type || '').trim()
+      );
+    if (matches) return i + 1;
+  }
+  return -1;
+}
+
 function replaceSheetRows(sheet, rows) {
   const lastRow = sheet.getLastRow();
-
-  // Delete all currently used rows below the header row
   if (lastRow > 1) {
     sheet.deleteRows(2, lastRow - 1);
   }
-
-  // If nothing remains, stop here.
   if (!rows || rows.length === 0) return;
-
-  // Write back only the remaining rows starting at row 2
   sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+}
+
+function getActivePins() {
+  const sheet = getSheet('AdminPins');
+  if (!sheet) return [];
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  const headers = data[0].map(h => String(h).trim().toLowerCase());
+  const pinIdx = headers.indexOf('pin');
+  const activeIdx = headers.indexOf('active');
+
+  if (pinIdx === -1) return [];
+
+  const pins = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const pinValue = String(row[pinIdx] || '').trim();
+    if (!pinValue) continue;
+
+    let isActive = true;
+    if (activeIdx !== -1) {
+      const raw = String(row[activeIdx]).trim().toLowerCase();
+      isActive = raw === '' || raw === 'true' || raw === 'yes' || raw === '1';
+    }
+
+    if (isActive) {
+      pins.push(pinValue);
+    }
+  }
+
+  return pins;
 }
 
 function doGet(e) {
@@ -82,6 +129,13 @@ function doGet(e) {
         success: true,
         attendees: attendeesSheet ? sheetToObjects(attendeesSheet) : [],
         records: recordsSheet ? sheetToObjects(recordsSheet) : [],
+      };
+    }
+
+    else if (action === 'getPins') {
+      result = {
+        success: true,
+        pins: getActivePins(),
       };
     }
 
@@ -171,8 +225,6 @@ function doPost(e) {
     else if (action === 'deleteRecord') {
       const sheet = getSheet('Records');
       let rowIndex = findRowById(sheet, data.id);
-
-      // Fallback to full-record matching if direct ID lookup fails
       if (rowIndex <= 0) {
         rowIndex = findRecordRow(sheet, data.record);
       }
