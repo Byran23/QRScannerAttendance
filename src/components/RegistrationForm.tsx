@@ -21,8 +21,12 @@ export default function RegistrationForm() {
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = 'Full name is required';
-    if (!form.email.trim()) errs.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Please enter a valid email';
+    
+    // Only validate formatting if an email is actually entered
+    if (form.email.trim() && !/\S+@\S+\.\S+/.test(form.email)) {
+      errs.email = 'Please enter a valid email';
+    }
+    
     if (!form.department.trim()) errs.department = 'Department/Office is required';
     if (!form.position.trim()) errs.position = 'Position is required';
     setErrors(errs);
@@ -143,7 +147,7 @@ export default function RegistrationForm() {
                     {form.department.trim() || 'Department'} · {form.position.trim() || 'Position'}
                   </p>
                   <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">
-                    {form.email.trim() || 'email'} · {form.phone.trim() || 'phone'}
+                    {form.email.trim() || 'No email'} · {form.phone.trim() || 'No phone'}
                   </p>
                 </div>
               </div>
@@ -158,7 +162,7 @@ export default function RegistrationForm() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Field label="Full Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} error={errors.name} placeholder="Juan Dela Cruz" required disabled={submitting} />
-                <Field label="Email" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" required disabled={submitting} />
+                <Field label="Email (optional)" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" disabled={submitting} />
                 <Field label="Department/Office" value={form.department} onChange={v => setForm(f => ({ ...f, department: v }))} error={errors.department} placeholder="Engineering" required disabled={submitting} />
                 <Field label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Software Engineer" required disabled={submitting} />
                 <Field label="Phone (optional)" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="+63 912 345 6789" disabled={submitting} />
@@ -172,7 +176,7 @@ export default function RegistrationForm() {
                     <>
                       <Loader2 size={18} className="animate-spin" />
                       Saving to database…
-                    </>
+                    </                    <>
                   ) : (
                     <>
                       <Send size={18} />
@@ -214,7 +218,7 @@ export default function RegistrationForm() {
               </div>
               <h3 className="text-lg font-bold text-gray-800 dark:text-white">{createdAttendee.name}</h3>
               <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{createdAttendee.department} · {createdAttendee.position}</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{createdAttendee.email} · {createdAttendee.phone || 'No phone'}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{createdAttendee.email || 'No email'} · {createdAttendee.phone || 'No phone'}</p>
 
               {/* QR Code */}
               <div ref={qrRef} className="inline-block bg-white p-5 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-600 mt-5">
