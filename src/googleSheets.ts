@@ -23,7 +23,7 @@
 
 export const GOOGLE_SHEETS_CONFIG = {
   // Paste your deployed Google Apps Script Web App URL here:
-  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbwFsaXgZcIatk_zGKIRf3cV6kKOCQE5axdZF9J1gqtS17qjWZI1O0U5LskAJTawviIg/exec',
+  WEB_APP_URL: '',
   
   // Example:
   // WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbw.../exec',
