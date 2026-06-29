@@ -170,7 +170,12 @@ function doPost(e) {
 
     else if (action === 'deleteRecord') {
       const sheet = getSheet('Records');
-      const rowIndex = findRowById(sheet, data.id);
+      let rowIndex = findRowById(sheet, data.id);
+
+      // Fallback to full-record matching if direct ID lookup fails
+      if (rowIndex <= 0) {
+        rowIndex = findRecordRow(sheet, data.record);
+      }
 
       if (rowIndex > 0) {
         sheet.deleteRow(rowIndex);

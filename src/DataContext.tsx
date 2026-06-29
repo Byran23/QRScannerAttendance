@@ -238,33 +238,37 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [synced, refreshData]);
 
   const deleteRecordFn = useCallback(async (id: string) => {
-    const next = records.filter(r => r.id !== id);
+    const recordToDelete = records.find(r => r.id === id);
+    const nextLocal = records.filter(r => r.id !== id);
 
     // Optimistic UI update
-    setRecords(next);
-    lsSet(LS_RECORDS, next);
+    setRecords(nextLocal);
+    lsSet(LS_RECORDS, nextLocal);
     mutationCooldownRef.current = Date.now();
 
     if (synced) {
       try {
-        // Preferred path: physically delete the exact row from the Records tab
-        await gsPost('deleteRecord', { id });
-      } catch (err) {
-        console.warn('deleteRecord failed; falling back to replaceRecords', err);
-        try {
-          // Fallback: rebuild the Records tab from remaining records
-          await gsPost('replaceRecords', { records: next });
-        } catch (replaceErr) {
-          console.error('replaceRecords fallback failed', replaceErr);
-        }
-      }
+        // 1) Fetch the latest records directly from Google Sheets
+        const latest = await gsGet();
+        const remoteNext = latest.records.filter(r => String(r.id).trim() !== String(id).trim());
 
-      // Re-sync from the sheet itself so the UI matches the actual Records tab
-      setTimeout(() => {
+        // 2) Try true per-row delete first (like Clear All but for one row)
+        try {
+          await gsPost('deleteRecord', { id, record: recordToDelete || null });
+        } catch (singleErr) {
+          console.warn('deleteRecord direct row delete failed, using replaceRecords', singleErr);
+        }
+
+        // 3) Always enforce final sheet state by rewriting remaining records from the live remote list
+        await gsPost('replaceRecords', { records: remoteNext });
+
+        // 4) Re-fetch from the sheet itself so all devices converge on the same Records tab state
         mutationCooldownRef.current = 0;
-        void refreshData();
-      }, 800);
-      return;
+        await refreshData();
+        return;
+      } catch (err) {
+        console.error('deleteRecord failed to sync to Google Sheets', err);
+      }
     }
 
     mutationCooldownRef.current = 0;
