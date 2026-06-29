@@ -224,20 +224,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [synced]);
 
   const deleteRecordFn = useCallback(async (id: string) => {
+    const next = records.filter(r => r.id !== id);
+
     // Optimistic update
-    setRecords(prev => prev.filter(r => r.id !== id));
+    setRecords(next);
+    lsSet(LS_RECORDS, next);
 
     if (synced) {
       try {
-        await gsPost('deleteRecord', { id });
+        // Rewrite the full Records tab to guarantee the deletion persists
+        await gsPost('replaceRecords', { records: next });
       } catch (err) {
         console.error('Failed to delete record:', err);
       }
     }
-
-    const next = lsGet<AttendanceRecord>(LS_RECORDS).filter(r => r.id !== id);
-    lsSet(LS_RECORDS, next);
-  }, [synced]);
+  }, [synced, records]);
 
   const clearRecordsFn = useCallback(async () => {
     // Optimistic update

@@ -136,12 +136,30 @@ function doPost(e) {
     }
     
     // ─── RECORDS ───
+    else if (action === 'replaceRecords') {
+      const sheet = getSheet('Records');
+      const records = data.records || [];
+      const rows = records.map(record => [
+        record.id,
+        record.attendeeId,
+        record.attendeeName,
+        record.attendeeEmail,
+        record.attendeeDepartment,
+        record.timestamp,
+        record.type
+      ]);
+      replaceSheetRows(sheet, rows);
+    }
+
     else if (action === 'deleteRecord') {
       const sheet = getSheet('Records');
       const rowIndex = findRowById(sheet, data.id);
       
       if (rowIndex > 0) {
         sheet.deleteRow(rowIndex);
+      } else {
+        result.success = false;
+        result.error = 'Record not found';
       }
     }
     

@@ -39,9 +39,10 @@ export default function QRScanner() {
       if (!attendee) { setScanFeedback({ type: 'warning', message: 'Attendee Not Found', detail: `ID: ${data.id}` }); setTimeout(() => setScanFeedback(null), 3000); return; }
       const lastAction = getAttendeeLastAction(data.id);
       const actionType: 'check-in' | 'check-out' = lastAction && lastAction.type === 'check-in' ? 'check-out' : 'check-in';
+      void stopScanner();
       setPendingScan({ attendee, actionType });
     } catch { setScanFeedback({ type: 'error', message: 'Invalid QR Code', detail: 'Could not parse QR data.' }); setTimeout(() => setScanFeedback(null), 3000); }
-  }, [getAttendeeById, getAttendeeLastAction]);
+  }, [getAttendeeById, getAttendeeLastAction, stopScanner]);
 
   const confirmScan = async () => {
     if (!pendingScan) return;
@@ -113,23 +114,6 @@ export default function QRScanner() {
           </div>
         )}
 
-        {pendingScan && (
-          <div className="p-5 border-t border-gray-100 dark:border-slate-800 animate-fade-in">
-            <div className="bg-blue-50 dark:bg-blue-950/50 rounded-2xl p-6 text-center">
-              <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-3">Confirm Attendance</p>
-              <div className={`w-16 h-16 rounded-full ${getInitialsBg(pendingScan.attendee.name)} flex items-center justify-center text-white text-xl font-bold mx-auto mb-3`}>{getInitials(pendingScan.attendee.name)}</div>
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white">{pendingScan.attendee.name}</h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{pendingScan.attendee.department} · {pendingScan.attendee.position}</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{pendingScan.attendee.email} · {pendingScan.attendee.phone || 'No phone'}</p>
-              <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${pendingScan.actionType === 'check-in' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400' : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400'}`}>{pendingScan.actionType === 'check-in' ? '↓ Check In' : '↑ Check Out'}</div>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
-              <div className="flex gap-3 mt-5">
-                <button onClick={cancelScan} className="flex-1 px-4 py-2.5 rounded-xl font-medium text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all">Cancel</button>
-                <button onClick={confirmScan} className={`flex-1 px-4 py-2.5 rounded-xl font-medium text-white transition-all shadow-lg ${pendingScan.actionType === 'check-in' ? 'bg-green-600 hover:bg-green-700 shadow-green-200 dark:shadow-green-900/30' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-200 dark:shadow-orange-900/30'}`}>Confirm {pendingScan.actionType === 'check-in' ? 'Check In' : 'Check Out'}</button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {scanFeedback && !pendingScan && (
           <div className={`mx-4 mb-4 rounded-xl p-4 flex items-center gap-3 animate-bounce-in ${scanFeedback.type === 'success' ? 'bg-green-50 dark:bg-green-950/50' : scanFeedback.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-950/50' : 'bg-orange-50 dark:bg-orange-950/50'}`}>
@@ -141,6 +125,32 @@ export default function QRScanner() {
           </div>
         )}
       </div>
+
+      {pendingScan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-bounce-in">
+            <div className="p-6 text-center">
+              <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-3">Confirm Attendance</p>
+              <div className={`w-16 h-16 rounded-full ${getInitialsBg(pendingScan.attendee.name)} flex items-center justify-center text-white text-xl font-bold mx-auto mb-3`}>
+                {getInitials(pendingScan.attendee.name)}
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">{pendingScan.attendee.name}</h3>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{pendingScan.attendee.department} · {pendingScan.attendee.position}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{pendingScan.attendee.email} · {pendingScan.attendee.phone || 'No phone'}</p>
+              <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${pendingScan.actionType === 'check-in' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400' : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400'}`}>
+                {pendingScan.actionType === 'check-in' ? '↓ Check In' : '↑ Check Out'}
+              </div>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+              <div className="flex gap-3 mt-5">
+                <button onClick={cancelScan} className="flex-1 px-4 py-2.5 rounded-xl font-medium text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all">Cancel</button>
+                <button onClick={confirmScan} className={`flex-1 px-4 py-2.5 rounded-xl font-medium text-white transition-all shadow-lg ${pendingScan.actionType === 'check-in' ? 'bg-green-600 hover:bg-green-700 shadow-green-200 dark:shadow-green-900/30' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-200 dark:shadow-orange-900/30'}`}>
+                  Confirm {pendingScan.actionType === 'check-in' ? 'Check In' : 'Check Out'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AttendeeSearch onSelect={handleManualSelect} />
     </div>

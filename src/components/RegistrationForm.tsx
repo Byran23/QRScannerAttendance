@@ -1,17 +1,22 @@
 import { useState, useRef } from 'react';
-import { ScanLine, CheckCircle, Download, Send } from 'lucide-react';
+import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { Attendee } from '../types';
+import { isGoogleSheetsConfigured } from '../googleSheets';
 
 export default function RegistrationForm() {
-  const { addAttendee } = useData();
+  const { addAttendee, synced } = useData();
   const [form, setForm] = useState({ name: '', email: '', department: '', position: '', phone: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdAttendee, setCreatedAttendee] = useState<Attendee | null>(null);
   const qrRef = useRef<HTMLDivElement>(null);
+
+  const sheetConfigured = isGoogleSheetsConfigured();
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -28,16 +33,26 @@ export default function RegistrationForm() {
     e.preventDefault();
     if (!validate()) return;
 
-    const attendee = await addAttendee({
-      name: form.name.trim(),
-      email: form.email.trim(),
-      department: form.department.trim(),
-      position: form.position.trim(),
-      phone: form.phone.trim(),
-    });
+    setSubmitting(true);
+    setSubmitError(null);
 
-    setCreatedAttendee(attendee);
-    setSubmitted(true);
+    try {
+      const attendee = await addAttendee({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        department: form.department.trim(),
+        position: form.position.trim(),
+        phone: form.phone.trim(),
+      });
+
+      setCreatedAttendee(attendee);
+      setSubmitted(true);
+    } catch (err) {
+      console.error('Registration failed:', err);
+      setSubmitError('Failed to save registration. Please check your connection and try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDownloadQR = () => {
@@ -70,6 +85,7 @@ export default function RegistrationForm() {
     setForm({ name: '', email: '', department: '', position: '', phone: '' });
     setErrors({});
     setSubmitted(false);
+    setSubmitError(null);
     setCreatedAttendee(null);
   };
 
@@ -78,7 +94,7 @@ export default function RegistrationForm() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
-      {/* Header — no admin link */}
+      {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-50">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-center">
           <div className="flex items-center gap-2">
@@ -105,6 +121,16 @@ export default function RegistrationForm() {
               <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Fill in your details to get your attendance QR code</p>
             </div>
 
+            {/* Connection status */}
+            {!sheetConfigured && (
+              <div className="bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-xl p-3 flex items-center gap-2.5">
+                <CloudOff size={16} className="text-orange-600 dark:text-orange-400 shrink-0" />
+                <p className="text-xs text-orange-700 dark:text-orange-400">
+                  Registration is offline. Data will be saved locally on this device only. Contact the admin to enable cloud sync.
+                </p>
+              </div>
+            )}
+
             <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
               {/* Live preview */}
               <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl mb-5">
@@ -122,19 +148,37 @@ export default function RegistrationForm() {
                 </div>
               </div>
 
+              {/* Error message */}
+              {submitError && (
+                <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-xl flex items-center gap-2.5">
+                  <AlertTriangle size={16} className="text-orange-600 dark:text-orange-400 shrink-0" />
+                  <p className="text-xs text-orange-700 dark:text-orange-400">{submitError}</p>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-4">
-                <Field label="Full Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} error={errors.name} placeholder="Juan Dela Cruz" required />
-                <Field label="Email" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" required />
-                <Field label="Department/Office" value={form.department} onChange={v => setForm(f => ({ ...f, department: v }))} error={errors.department} placeholder="Engineering" required />
-                <Field label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Software Engineer" required />
-                <Field label="Phone (optional)" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="+63 912 345 6789" />
+                <Field label="Full Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} error={errors.name} placeholder="Juan Dela Cruz" required disabled={submitting} />
+                <Field label="Email" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" required disabled={submitting} />
+                <Field label="Department/Office" value={form.department} onChange={v => setForm(f => ({ ...f, department: v }))} error={errors.department} placeholder="Engineering" required disabled={submitting} />
+                <Field label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Software Engineer" required disabled={submitting} />
+                <Field label="Phone (optional)" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="+63 912 345 6789" disabled={submitting} />
 
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30 text-base mt-2"
+                  disabled={submitting}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30 text-base mt-2"
                 >
-                  <Send size={18} />
-                  Submit Registration
+                  {submitting ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Saving to database…
+                    </>
+                  ) : (
+                    <>
+                      <Send size={18} />
+                      Submit Registration
+                    </>
+                  )}
                 </button>
               </form>
             </div>
@@ -150,8 +194,18 @@ export default function RegistrationForm() {
             <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-2xl p-5 text-center">
               <CheckCircle size={40} className="text-green-600 dark:text-green-400 mx-auto mb-3" />
               <h2 className="text-xl font-bold text-green-800 dark:text-green-300">Registration Successful!</h2>
-              <p className="text-green-600 dark:text-green-400 text-sm mt-1">Your QR code is ready below</p>
+              <p className="text-green-600 dark:text-green-400 text-sm mt-1">
+                {synced ? 'Your data has been saved to the database.' : 'Your data has been saved locally.'}
+              </p>
             </div>
+
+            {/* Saved-to confirmation */}
+            {synced && (
+              <div className="flex items-center justify-center gap-2 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 py-2 rounded-lg">
+                <CheckCircle size={14} />
+                Saved to Google Sheets ✓
+              </div>
+            )}
 
             {/* Attendee Card + QR */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 text-center">
@@ -211,8 +265,8 @@ export default function RegistrationForm() {
   );
 }
 
-function Field({ label, value, onChange, error, placeholder, type = 'text', required }: {
-  label: string; value: string; onChange: (v: string) => void; error?: string; placeholder?: string; type?: string; required?: boolean;
+function Field({ label, value, onChange, error, placeholder, type = 'text', required, disabled }: {
+  label: string; value: string; onChange: (v: string) => void; error?: string; placeholder?: string; type?: string; required?: boolean; disabled?: boolean;
 }) {
   return (
     <div>
@@ -224,7 +278,8 @@ function Field({ label, value, onChange, error, placeholder, type = 'text', requ
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition-all ${
+        disabled={disabled}
+        className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
           error
             ? 'border-orange-300 dark:border-orange-700 focus:ring-orange-500 bg-orange-50 dark:bg-orange-950/30'
             : 'border-gray-200 dark:border-slate-700 focus:ring-blue-500 bg-white dark:bg-slate-800'
