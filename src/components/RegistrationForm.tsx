@@ -201,7 +201,7 @@ export default function RegistrationForm() {
             {synced && (
               <div className="flex items-center justify-center gap-2 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 py-2 rounded-lg">
                 <CheckCircle size={14} />
-                Saved to Google Sheets ✓
+                Saved to Attendees Database ✓
               </div>
             )}
 
