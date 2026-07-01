@@ -15,7 +15,7 @@ export default function QRCodeView({ attendee, onNavigate }: QRCodeViewProps) {
   const qrData = JSON.stringify({
     id: attendee.id,
     name: attendee.name,
-    position: attendee.position,
+    email: attendee.email,
     department: attendee.department,
   });
 
@@ -68,8 +68,8 @@ export default function QRCodeView({ attendee, onNavigate }: QRCodeViewProps) {
         </head>
         <body>
           <h2>${attendee.name}</h2>
-          <p>${attendee.position}</p>
-          <p>${attendee.department} — ${attendee.position}</p>
+          <p>${attendee.email}</p>
+          <p>${attendee.department} — ${attendee.email}</p>
           <div style="margin: 20px 0;">${svgData}</div>
           <p style="font-size: 12px; color: #999;">Scan to check in/out</p>
         </body>
@@ -94,8 +94,8 @@ export default function QRCodeView({ attendee, onNavigate }: QRCodeViewProps) {
           {getInitials(attendee.name)}
         </div>
         <h2 className="text-xl font-bold text-gray-800 dark:text-white">{attendee.name}</h2>
-        <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">{attendee.department} · {attendee.position}</p>
-        <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">{attendee.position} · {attendee.phone || 'No phone'}</p>
+        <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">{attendee.department} · {attendee.email}</p>
+        <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">{attendee.email} · {attendee.phone || 'No phone'}</p>
 
         <div
           ref={qrRef}

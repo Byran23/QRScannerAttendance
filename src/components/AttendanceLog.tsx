@@ -16,7 +16,7 @@ export default function AttendanceLog() {
     const matchesSearch =
       r.attendeeName.toLowerCase().includes(search.toLowerCase()) ||
       r.attendeeDepartment.toLowerCase().includes(search.toLowerCase()) ||
-      r.attendeePosition.toLowerCase().includes(search.toLowerCase());
+      r.attendeeEmail.toLowerCase().includes(search.toLowerCase());
     const matchesDate =
       !dateFilter || new Date(r.timestamp).toLocaleDateString('en-CA') === dateFilter;
     return matchesType && matchesSearch && matchesDate;
@@ -40,7 +40,7 @@ export default function AttendanceLog() {
       filtered
         .map(r => {
           const d = new Date(r.timestamp);
-          return `"${r.attendeeName}","${r.attendeeDepartment}","${r.attendeePosition}","${r.type}","${d.toLocaleDateString()}","${d.toLocaleTimeString()}"`;
+          return `"${r.attendeeName}","${r.attendeeDepartment}","${r.attendeeEmail}","${r.type}","${d.toLocaleDateString()}","${d.toLocaleTimeString()}"`;
         })
         .join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -204,7 +204,7 @@ export default function AttendanceLog() {
                           </span>
                           <span className="text-xs text-gray-300 dark:text-slate-600">•</span>
                           <span className="text-xs text-gray-400 dark:text-slate-500">
-                            {record.attendeePosition}
+                            {record.attendeeEmail}
                           </span>
                         </div>
                       </div>
