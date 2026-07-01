@@ -15,7 +15,7 @@ export default function QRCodeView({ attendee, onNavigate }: QRCodeViewProps) {
   const qrData = JSON.stringify({
     id: attendee.id,
     name: attendee.name,
-    email: attendee.email,
+    position: attendee.position,
     department: attendee.department,
   });
 
