@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff } from 'lucide-react';
+import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
 import { getInitials, getInitialsBg } from '../utils/initials';
@@ -8,7 +8,15 @@ import { isGoogleSheetsConfigured } from '../googleSheets';
 
 export default function RegistrationForm() {
   const { addAttendee, synced } = useData();
-  const [form, setForm] = useState({ name: '', email: '', department: '', position: '', phone: '' });
+  const [form, setForm] = useState({ 
+    name: '', 
+    email: '', 
+    department: '', 
+    position: '', 
+    phone: '',
+    willAttend: 'yes', // 'yes' | 'no'
+    reason: '' 
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -23,6 +31,12 @@ export default function RegistrationForm() {
     if (!form.name.trim()) errs.name = 'Full name is required';
     if (!form.department.trim()) errs.department = 'Department/Office is required';
     if (!form.position.trim()) errs.position = 'Position is required';
+    
+    // Require reason if attending status is "no"
+    if (form.willAttend === 'no' && !form.reason.trim()) {
+      errs.reason = 'Please state your reason for not attending';
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -41,6 +55,8 @@ export default function RegistrationForm() {
         department: form.department.trim(),
         position: form.position.trim(),
         phone: form.phone.trim(),
+        willAttend: form.willAttend === 'yes',
+        reason: form.willAttend === 'no' ? form.reason.trim() : '',
       });
 
       setCreatedAttendee(attendee);
@@ -48,7 +64,7 @@ export default function RegistrationForm() {
     } catch (err) {
       console.error('Registration failed:', err);
       setSubmitError('Failed to save registration. Please check your connection and try again.');
-    } finally {
+    } fontally {
       setSubmitting(false);
     }
   };
@@ -80,7 +96,7 @@ export default function RegistrationForm() {
   };
 
   const handleRegisterAnother = () => {
-    setForm({ name: '', email: '', department: '', position: '', phone: '' });
+    setForm({ name: '', email: '', department: '', position: '', phone: '', willAttend: 'yes', reason: '' });
     setErrors({});
     setSubmitted(false);
     setSubmitError(null);
@@ -115,8 +131,8 @@ export default function RegistrationForm() {
               <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Send size={28} className="text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Register as Attendee</h2>
-              <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Fill in your details to get your attendance QR code</p>
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Register Attendance</h2>
+              <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Fill in your details to confirm your attendance status</p>
             </div>
 
             {/* Connection status */}
@@ -136,7 +152,16 @@ export default function RegistrationForm() {
                   {previewInitials}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-700 dark:text-slate-300 text-sm truncate">{form.name.trim() || 'Your Name'}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium text-gray-700 dark:text-slate-300 text-sm truncate">{form.name.trim() || 'Your Name'}</p>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                      form.willAttend === 'yes' 
+                        ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' 
+                        : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+                    }`}>
+                      {form.willAttend === 'yes' ? 'Attending' : 'Not Attending'}
+                    </span>
+                  </div>
                   <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5">
                     {form.department.trim() || 'Department'} · {form.position.trim() || 'Position'}
                   </p>
@@ -161,6 +186,72 @@ export default function RegistrationForm() {
                 <Field label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Legislative Staff" required disabled={submitting} />
                 <Field label="Phone (optional)" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="+63 912 345 6789" disabled={submitting} />
 
+                {/* Will Attend / Will Not Attend Selection */}
+                <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                    Attendance Confirmation <span className="text-orange-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className={`flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                      form.willAttend === 'yes'
+                        ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-medium'
+                        : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="willAttend"
+                        value="yes"
+                        checked={form.willAttend === 'yes'}
+                        onChange={() => setForm(f => ({ ...f, willAttend: 'yes', reason: '' }))}
+                        disabled={submitting}
+                        className="hidden"
+                      />
+                      <CheckCircle size={16} />
+                      <span className="text-sm">Will Attend</span>
+                    </label>
+
+                    <label className={`flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                      form.willAttend === 'no'
+                        ? 'border-red-500 bg-red-50/50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-medium'
+                        : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="willAttend"
+                        value="no"
+                        checked={form.willAttend === 'no'}
+                        onChange={() => setForm(f => ({ ...f, willAttend: 'no' }))}
+                        disabled={submitting}
+                        className="hidden"
+                      />
+                      <XCircle size={16} />
+                      <span className="text-sm">Will Not Attend</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Reason Text Area (Visible when "Will Not Attend" is selected) */}
+                {form.willAttend === 'no' && (
+                  <div className="animate-fade-in">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Reason for non-attendance <span className="text-orange-500">*</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={form.reason}
+                      onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+                      placeholder="Please specify why you cannot attend (e.g., Conflict of schedule, Official business, On leave)..."
+                      disabled={submitting}
+                      className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition-all resize-none disabled:opacity-60 disabled:cursor-not-allowed ${
+                        errors.reason
+                          ? 'border-orange-300 dark:border-orange-700 focus:ring-orange-500 bg-orange-50 dark:bg-orange-950/30'
+                          : 'border-gray-200 dark:border-slate-700 focus:ring-blue-500 bg-white dark:bg-slate-800'
+                      } dark:text-white dark:placeholder-slate-500`}
+                    />
+                    {errors.reason && <p className="text-orange-600 dark:text-orange-400 text-xs mt-1">{errors.reason}</p>}
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={submitting}
@@ -174,7 +265,7 @@ export default function RegistrationForm() {
                   ) : (
                     <>
                       <Send size={18} />
-                      Submit Registration
+                      Submit Response
                     </>
                   )}
                 </button>
@@ -182,7 +273,7 @@ export default function RegistrationForm() {
             </div>
 
             <p className="text-center text-[11px] text-gray-400 dark:text-slate-500">
-              Your QR code will be shown after submitting. Save it for attendance check-in.
+              Your response will be recorded for event management.
             </p>
           </div>
         ) : createdAttendee ? (
@@ -214,6 +305,22 @@ export default function RegistrationForm() {
               <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{createdAttendee.department} · {createdAttendee.position}</p>
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{createdAttendee.email || 'No email'} · {createdAttendee.phone || 'No phone'}</p>
 
+              {/* Status Indicator */}
+              <div className="mt-3">
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                  createdAttendee.willAttend !== false
+                    ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+                    : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+                }`}>
+                  Status: {createdAttendee.willAttend !== false ? 'Will Attend' : 'Will Not Attend'}
+                </span>
+                {createdAttendee.willAttend === false && createdAttendee.reason && (
+                  <p className="text-xs text-gray-500 dark:text-slate-400 italic mt-1.5 px-4">
+                    "{createdAttendee.reason}"
+                  </p>
+                )}
+              </div>
+
               {/* QR Code */}
               <div ref={qrRef} className="inline-block bg-white p-5 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-600 mt-5">
                 <QRCodeSVG
@@ -222,6 +329,8 @@ export default function RegistrationForm() {
                     name: createdAttendee.name,
                     email: createdAttendee.email,
                     department: createdAttendee.department,
+                    willAttend: createdAttendee.willAttend !== false,
+                    reason: createdAttendee.reason || '',
                   })}
                   size={200}
                   level="H"
@@ -232,7 +341,7 @@ export default function RegistrationForm() {
               </div>
 
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">
-                Screenshot or download this QR code for attendance scanning
+                Screenshot or download this QR code for attendance records
               </p>
 
               {/* Actions */}
