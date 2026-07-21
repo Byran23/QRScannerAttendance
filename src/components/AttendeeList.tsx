@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -11,7 +11,8 @@ interface AttendeeListProps {
 type SortOption = 'name-asc' | 'name-desc' | 'office-asc' | 'date-desc' | 'date-asc';
 
 export default function AttendeeList({ onNavigate }: AttendeeListProps) {
-  const { attendees, deleteAttendee, getAttendeeLastAction } = useData();
+  // Destructured checkInAttendee (or checkIn) from context
+  const { attendees, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
   const [filterAttendance, setFilterAttendance] = useState<'all' | 'attending' | 'not-attending'>('all');
@@ -117,6 +118,12 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     const lastAction = getAttendeeLastAction(attendee.id);
     if (!lastAction) return 'absent';
     return lastAction.type === 'check-in' ? 'present' : 'checked-out';
+  };
+
+  const handleCheckIn = (attendee: Attendee) => {
+    if (checkInAttendee) {
+      checkInAttendee(attendee.id);
+    }
   };
 
   const totalAttending = attendees.filter(a => checkWillAttend(a)).length;
@@ -259,6 +266,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             const isAttending = checkWillAttend(attendee);
             const isExpanded = expandedAttendeeId === attendee.id;
             const isTooltipOpen = activeReasonTooltip === attendee.id;
+            const isCheckedIn = status === 'present';
 
             return (
               <div 
@@ -338,6 +346,23 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
                   {/* Actions Column */}
                   <div className="flex items-center gap-1 shrink-0">
+                    {/* Check In Button strictly for Attendees */}
+                    {isAttending && (
+                      <button
+                        onClick={() => handleCheckIn(attendee)}
+                        disabled={isCheckedIn}
+                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          isCheckedIn
+                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 cursor-default opacity-80'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm active:scale-95'
+                        }`}
+                        title={isCheckedIn ? 'Already Checked In' : 'Check In Attendee'}
+                      >
+                        {isCheckedIn ? <Check size={14} /> : <LogIn size={14} />}
+                        <span>{isCheckedIn ? 'Checked In' : 'Check In'}</span>
+                      </button>
+                    )}
+
                     <button 
                       onClick={() => toggleExpand(attendee.id)} 
                       className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 transition-colors" 
