@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -12,6 +12,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const { attendees, deleteAttendee, getAttendeeLastAction } = useData();
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
+  const [filterAttendance, setFilterAttendance] = useState<'all' | 'attending' | 'not-attending'>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -54,9 +55,19 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const departments = [...new Set(attendees.map(a => a.department))];
 
   const filtered = attendees.filter(a => {
-    const matchesSearch = a.name.toLowerCase().includes(search.toLowerCase()) || a.email.toLowerCase().includes(search.toLowerCase()) || a.department.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = 
+      a.name.toLowerCase().includes(search.toLowerCase()) || 
+      a.email.toLowerCase().includes(search.toLowerCase()) || 
+      a.department.toLowerCase().includes(search.toLowerCase());
+      
     const matchesDept = filterDept === 'all' || a.department === filterDept;
-    return matchesSearch && matchesDept;
+
+    const matchesAttendance = 
+      filterAttendance === 'all' ||
+      (filterAttendance === 'attending' && a.willAttend !== false) ||
+      (filterAttendance === 'not-attending' && a.willAttend === false);
+
+    return matchesSearch && matchesDept && matchesAttendance;
   });
 
   const handleDelete = (id: string) => { deleteAttendee(id); setShowDeleteConfirm(null); };
@@ -67,12 +78,17 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return lastAction.type === 'check-in' ? 'present' : 'checked-out';
   };
 
+  const totalAttending = attendees.filter(a => a.willAttend !== false).length;
+  const totalNotAttending = attendees.filter(a => a.willAttend === false).length;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Attendees</h2>
-          <p className="text-gray-500 dark:text-slate-400 text-sm">{attendees.length} registered</p>
+          <p className="text-gray-500 dark:text-slate-400 text-sm">
+            {attendees.length} registered · {totalAttending} attending · {totalNotAttending} declined
+          </p>
         </div>
         <button onClick={() => onNavigate('add-attendee')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30">
           <Plus size={18} /> Add New
@@ -112,17 +128,65 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-          <input type="text" placeholder="Search by name, email, or dept/office..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 transition-colors" />
+      {/* Filters Bar */}
+      <div className="space-y-3">
+        {/* Attendance Status Tabs */}
+        <div className="flex bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit">
+          <button
+            onClick={() => setFilterAttendance('all')}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              filterAttendance === 'all'
+                ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+            }`}
+          >
+            All ({attendees.length})
+          </button>
+          <button
+            onClick={() => setFilterAttendance('attending')}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              filterAttendance === 'attending'
+                ? 'bg-white dark:bg-slate-900 text-green-700 dark:text-green-400 shadow-sm'
+                : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+            }`}
+          >
+            Attending ({totalAttending})
+          </button>
+          <button
+            onClick={() => setFilterAttendance('not-attending')}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              filterAttendance === 'not-attending'
+                ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 shadow-sm'
+                : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+            }`}
+          >
+            Not Attending ({totalNotAttending})
+          </button>
         </div>
-        <div className="relative">
-          <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-          <select value={filterDept} onChange={e => setFilterDept(e.target.value)} className="pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white appearance-none cursor-pointer transition-colors">
-            <option value="all">All Dept/Office</option>
-            {departments.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
+
+        {/* Search and Dept Filter */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <input 
+              type="text" 
+              placeholder="Search by name, email, or dept/office..." 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 transition-colors" 
+            />
+          </div>
+          <div className="relative">
+            <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <select 
+              value={filterDept} 
+              onChange={e => setFilterDept(e.target.value)} 
+              className="pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white appearance-none cursor-pointer transition-colors w-full sm:w-auto"
+            >
+              <option value="all">All Dept/Office</option>
+              {departments.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -130,33 +194,64 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 transition-colors">
           <Users size={48} className="mx-auto text-gray-300 dark:text-slate-600 mb-4" />
           <p className="text-gray-500 dark:text-slate-400 font-medium">No attendees found</p>
-          <p className="text-gray-400 dark:text-slate-500 text-sm mt-1">{search ? 'Try adjusting your search' : 'Add your first attendee to get started'}</p>
-          {!search && <button onClick={() => onNavigate('add-attendee')} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition-all"><Plus size={16} className="inline mr-1" />Add Attendee</button>}
+          <p className="text-gray-400 dark:text-slate-500 text-sm mt-1">{search || filterDept !== 'all' || filterAttendance !== 'all' ? 'Try adjusting your filters or search' : 'Add your first attendee to get started'}</p>
+          {!search && filterDept === 'all' && filterAttendance === 'all' && (
+            <button onClick={() => onNavigate('add-attendee')} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition-all"><Plus size={16} className="inline mr-1" />Add Attendee</button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map(attendee => {
             const status = getStatus(attendee);
+            const isAttending = attendee.willAttend !== false;
+
             return (
               <div key={attendee.id} className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-800 hover:shadow-md transition-all">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full ${getInitialsBg(attendee.name)} flex items-center justify-center text-white text-lg font-bold shrink-0`}>{getInitials(attendee.name)}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${status === 'present' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400' : status === 'checked-out' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'}`}>
-                        {status === 'present' ? 'Present' : status === 'checked-out' ? 'Left' : 'Absent'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 truncate">{attendee.department} · {attendee.position}</p>
-                    <p className="text-sm text-gray-400 dark:text-slate-500 truncate mt-1">{attendee.email} · {attendee.phone || 'No phone'}</p>
+                <div className="flex items-start gap-4">
+                  <div className={`w-12 h-12 rounded-full ${getInitialsBg(attendee.name)} flex items-center justify-center text-white text-lg font-bold shrink-0 mt-0.5`}>
+                    {getInitials(attendee.name)}
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
+                      
+                      {/* Attendance Intention Badge */}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${
+                        isAttending 
+                          ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400' 
+                          : 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400'
+                      }`}>
+                        {isAttending ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                        {isAttending ? 'Will Attend' : 'Will Not Attend'}
+                      </span>
+
+                      {/* Event Live Scan Status */}
+                      {isAttending && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${status === 'present' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400' : status === 'checked-out' ? 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'}`}>
+                          {status === 'present' ? 'Present' : status === 'checked-out' ? 'Left' : 'Absent'}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 truncate">{attendee.department} · {attendee.position}</p>
+                    <p className="text-sm text-gray-400 dark:text-slate-500 truncate mt-0.5">{attendee.email} · {attendee.phone || 'No phone'}</p>
+
+                    {/* Display Non-attendance Reason */}
+                    {!isAttending && attendee.reason && (
+                      <div className="mt-2 text-xs bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/40 rounded-lg p-2 text-red-700 dark:text-red-300">
+                        <span className="font-semibold">Reason: </span>
+                        <span className="italic">{attendee.reason}</span>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex gap-1 shrink-0">
                     <button onClick={() => onNavigate('qr-view', attendee)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg text-blue-600 dark:text-blue-400 transition-colors" title="View QR Code"><QrCode size={18} /></button>
                     <button onClick={() => onNavigate('edit-attendee', attendee)} className="p-2 hover:bg-sky-50 dark:hover:bg-sky-950 rounded-lg text-sky-600 dark:text-sky-400 transition-colors" title="Edit"><Edit size={18} /></button>
                     <button onClick={() => setShowDeleteConfirm(attendee.id)} className="p-2 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-lg text-orange-500 dark:text-orange-400 transition-colors" title="Delete"><Trash2 size={18} /></button>
                   </div>
                 </div>
+
                 {showDeleteConfirm === attendee.id && (
                   <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/50 rounded-xl flex items-center justify-between">
                     <p className="text-sm text-orange-700 dark:text-orange-400">Delete this attendee?</p>
