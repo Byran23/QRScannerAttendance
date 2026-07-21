@@ -23,13 +23,7 @@ export default function QRScanner() {
   const lastScanTimeRef = useRef<number>(0);
 
   const stopScanner = useCallback(async () => {
-    if (scannerRef.current) {
-      try {
-        const s = scannerRef.current.getState();
-        if (s === 2) await scannerRef.current.stop();
-      } catch { /* */ }
-      scannerRef.current = null;
-    }
+    if (scannerRef.current) { try { const s = scannerRef.current.getState(); if (s === 2) await scannerRef.current.stop(); } catch { /* */ } scannerRef.current = null; }
     setIsScanning(false);
   }, []);
 
@@ -40,25 +34,14 @@ export default function QRScanner() {
     lastScanTimeRef.current = now;
     try {
       const data = JSON.parse(decodedText);
-      if (!data.id) {
-        setScanFeedback({ type: 'error', message: 'Invalid QR Code', detail: 'No valid attendee data.' });
-        setTimeout(() => setScanFeedback(null), 3000);
-        return;
-      }
+      if (!data.id) { setScanFeedback({ type: 'error', message: 'Invalid QR Code', detail: 'No valid attendee data.' }); setTimeout(() => setScanFeedback(null), 3000); return; }
       const attendee = getAttendeeById(data.id);
-      if (!attendee) {
-        setScanFeedback({ type: 'warning', message: 'Attendee Not Found', detail: `ID: ${data.id}` });
-        setTimeout(() => setScanFeedback(null), 3000);
-        return;
-      }
+      if (!attendee) { setScanFeedback({ type: 'warning', message: 'Attendee Not Found', detail: `ID: ${data.id}` }); setTimeout(() => setScanFeedback(null), 3000); return; }
       const lastAction = getAttendeeLastAction(data.id);
       const actionType: 'check-in' | 'check-out' = lastAction && lastAction.type === 'check-in' ? 'check-out' : 'check-in';
       void stopScanner();
       setPendingScan({ attendee, actionType });
-    } catch {
-      setScanFeedback({ type: 'error', message: 'Invalid QR Code', detail: 'Could not parse QR data.' });
-      setTimeout(() => setScanFeedback(null), 3000);
-    }
+    } catch { setScanFeedback({ type: 'error', message: 'Invalid QR Code', detail: 'Could not parse QR data.' }); setTimeout(() => setScanFeedback(null), 3000); }
   }, [getAttendeeById, getAttendeeLastAction, stopScanner]);
 
   const confirmScan = async () => {
@@ -80,31 +63,10 @@ export default function QRScanner() {
   const startScanner = useCallback(async () => {
     setCameraError(null); setScanFeedback(null);
     try {
-      if (scannerRef.current) {
-        try {
-          const s = scannerRef.current.getState();
-          if (s === 2) await scannerRef.current.stop();
-        } catch { /* */ }
-      }
+      if (scannerRef.current) { try { const s = scannerRef.current.getState(); if (s === 2) await scannerRef.current.stop(); } catch { /* */ } }
       const scanner = new Html5Qrcode('qr-reader');
       scannerRef.current = scanner;
-
-      // Dynamic qrbox calculation based on container width for perfect square framing
-      const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
-        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-        const qrboxSize = Math.floor(minEdge * 0.75); // 75% of the square viewport
-        return {
-          width: qrboxSize,
-          height: qrboxSize
-        };
-      };
-
-      await scanner.start(
-        { facingMode: 'environment' }, 
-        { fps: 15, qrbox: qrboxFunction, aspectRatio: 1.0 }, 
-        handleScan, 
-        () => {}
-      );
+      await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, handleScan, () => {});
       setIsScanning(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -113,55 +75,32 @@ export default function QRScanner() {
     }
   }, [handleScan]);
 
-  useEffect(() => {
-    return () => {
-      if (scannerRef.current) {
-        try {
-          const s = scannerRef.current.getState();
-          if (s === 2) scannerRef.current.stop();
-        } catch { /* */ }
-      }
-    };
-  }, []);
+  useEffect(() => { return () => { if (scannerRef.current) { try { const s = scannerRef.current.getState(); if (s === 2) scannerRef.current.stop(); } catch { /* */ } } }; }, []);
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
+    <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">QR Scanner</h2>
         <p className="text-gray-500 dark:text-slate-400 text-sm">Scan attendee QR codes to record check-in/check-out</p>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
-        {/* Square container wrapper */}
-        <div className="relative w-full aspect-square max-w-[600px] mx-auto bg-gray-900 flex items-center justify-center">
-          <div 
-            id="qr-reader" 
-            className={`w-full h-full ${isScanning ? 'block' : 'hidden'}`} 
-          />
-          
+        <div className="relative">
+          <div id="qr-reader" className={`w-full ${isScanning ? 'min-h-[350px]' : 'h-0 overflow-hidden'}`} />
           {!isScanning && !cameraError && !pendingScan && (
-            <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center bg-white dark:bg-slate-900">
-              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-blue-100 to-orange-100 dark:from-blue-900/50 dark:to-orange-900/50 flex items-center justify-center mb-6">
-                <Camera size={52} className="text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Ready to Scan</h3>
-              <p className="text-gray-500 dark:text-slate-400 text-sm max-w-xs mb-8">Point your camera at an attendee's QR code to record attendance</p>
-              <button onClick={startScanner} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-medium flex items-center gap-2.5 transition-all shadow-xl shadow-blue-200 dark:shadow-blue-900/30 text-lg">
-                <Camera size={24} />Start Camera
-              </button>
+            <div className="flex flex-col items-center justify-center py-16 px-6">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-orange-100 dark:from-blue-900/50 dark:to-orange-900/50 flex items-center justify-center mb-6"><Camera size={40} className="text-blue-600 dark:text-blue-400" /></div>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Ready to Scan</h3>
+              <p className="text-gray-500 dark:text-slate-400 text-sm text-center max-w-xs mb-6">Point your camera at an attendee's QR code to record attendance</p>
+              <button onClick={startScanner} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30 text-lg"><Camera size={22} />Start Camera</button>
             </div>
           )}
-
           {cameraError && (
-            <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center bg-white dark:bg-slate-900">
-              <div className="w-20 h-20 rounded-full bg-orange-50 dark:bg-orange-950/50 flex items-center justify-center mb-4">
-                <CameraOff size={40} className="text-orange-500 dark:text-orange-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-orange-700 dark:text-orange-400 mb-2">Camera Error</h3>
-              <p className="text-orange-500 dark:text-orange-400 text-sm max-w-sm mb-6">{cameraError}</p>
-              <button onClick={startScanner} className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-xl font-medium flex items-center gap-2 transition-all text-base">
-                <RotateCcw size={18} />Try Again
-              </button>
+            <div className="flex flex-col items-center justify-center py-16 px-6">
+              <div className="w-20 h-20 rounded-full bg-orange-50 dark:bg-orange-950/50 flex items-center justify-center mb-4"><CameraOff size={36} className="text-orange-500 dark:text-orange-400" /></div>
+              <h3 className="text-lg font-semibold text-orange-700 dark:text-orange-400 mb-2">Camera Error</h3>
+              <p className="text-orange-500 dark:text-orange-400 text-sm text-center max-w-sm mb-4">{cameraError}</p>
+              <button onClick={startScanner} className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all"><RotateCcw size={18} />Try Again</button>
             </div>
           )}
         </div>
@@ -169,23 +108,19 @@ export default function QRScanner() {
         {isScanning && !pendingScan && (
           <div className="p-4 border-t border-gray-100 dark:border-slate-800">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-3.5 h-3.5 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-base font-medium text-gray-700 dark:text-slate-300">Camera Active</span>
-              </div>
-              <button onClick={stopScanner} className="bg-orange-100 dark:bg-orange-950/50 hover:bg-orange-200 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-400 px-5 py-2.5 rounded-xl text-base font-medium flex items-center gap-2 transition-all">
-                <CameraOff size={18} />Stop Camera
-              </button>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" /><span className="text-sm font-medium text-gray-700 dark:text-slate-300">Camera Active</span></div>
+              <button onClick={stopScanner} className="bg-orange-100 dark:bg-orange-950/50 hover:bg-orange-200 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-400 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all"><CameraOff size={16} />Stop Camera</button>
             </div>
           </div>
         )}
 
+
         {scanFeedback && !pendingScan && (
-          <div className={`mx-4 my-4 rounded-xl p-4 flex items-center gap-3 animate-bounce-in ${scanFeedback.type === 'success' ? 'bg-green-50 dark:bg-green-950/50' : scanFeedback.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-950/50' : 'bg-orange-50 dark:bg-orange-950/50'}`}>
-            {scanFeedback.type === 'success' ? <CheckCircle size={24} className="text-green-600 dark:text-green-400 shrink-0" /> : scanFeedback.type === 'warning' ? <AlertTriangle size={24} className="text-yellow-600 dark:text-yellow-400 shrink-0" /> : <XCircle size={24} className="text-orange-600 dark:text-orange-400 shrink-0" />}
+          <div className={`mx-4 mb-4 rounded-xl p-4 flex items-center gap-3 animate-bounce-in ${scanFeedback.type === 'success' ? 'bg-green-50 dark:bg-green-950/50' : scanFeedback.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-950/50' : 'bg-orange-50 dark:bg-orange-950/50'}`}>
+            {scanFeedback.type === 'success' ? <CheckCircle size={22} className="text-green-600 dark:text-green-400 shrink-0" /> : scanFeedback.type === 'warning' ? <AlertTriangle size={22} className="text-yellow-600 dark:text-yellow-400 shrink-0" /> : <XCircle size={22} className="text-orange-600 dark:text-orange-400 shrink-0" />}
             <div>
-              <p className={`font-semibold text-base ${scanFeedback.type === 'success' ? 'text-green-800 dark:text-green-300' : scanFeedback.type === 'warning' ? 'text-yellow-800 dark:text-yellow-300' : 'text-orange-800 dark:text-orange-300'}`}>{scanFeedback.message}</p>
-              {scanFeedback.detail && <p className={`text-sm mt-0.5 ${scanFeedback.type === 'success' ? 'text-green-600 dark:text-green-400' : scanFeedback.type === 'warning' ? 'text-yellow-600 dark:text-yellow-400' : 'text-orange-600 dark:text-orange-400'}`}>{scanFeedback.detail}</p>}
+              <p className={`font-semibold text-sm ${scanFeedback.type === 'success' ? 'text-green-800 dark:text-green-300' : scanFeedback.type === 'warning' ? 'text-yellow-800 dark:text-yellow-300' : 'text-orange-800 dark:text-orange-300'}`}>{scanFeedback.message}</p>
+              {scanFeedback.detail && <p className={`text-xs mt-0.5 ${scanFeedback.type === 'success' ? 'text-green-600 dark:text-green-400' : scanFeedback.type === 'warning' ? 'text-yellow-600 dark:text-yellow-400' : 'text-orange-600 dark:text-orange-400'}`}>{scanFeedback.detail}</p>}
             </div>
           </div>
         )}
