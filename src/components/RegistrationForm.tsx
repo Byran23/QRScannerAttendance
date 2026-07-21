@@ -94,14 +94,6 @@ export default function RegistrationForm() {
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   };
 
-  const handleRegisterAnother = () => {
-    setForm({ name: '', email: '', department: '', position: '', phone: '', willAttend: 'yes', reason: '' });
-    setErrors({});
-    setSubmitted(false);
-    setSubmitError(null);
-    setCreatedAttendee(null);
-  };
-
   const previewInitials = form.name.trim() ? getInitials(form.name) : '?';
   const previewBg = form.name.trim() ? getInitialsBg(form.name) : 'bg-gray-400';
 
@@ -320,19 +312,13 @@ export default function RegistrationForm() {
                     Screenshot or download this QR code for attendance records
                   </p>
 
-                  <div className="flex flex-col gap-3 mt-5">
+                  <div className="mt-5">
                     <button
                       onClick={handleDownloadQR}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30"
                     >
                       <Download size={18} />
                       Download QR Code
-                    </button>
-                    <button
-                      onClick={handleRegisterAnother}
-                      className="w-full bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-3 rounded-xl font-medium transition-all"
-                    >
-                      Register Another Person
                     </button>
                   </div>
                 </div>
@@ -359,13 +345,6 @@ export default function RegistrationForm() {
                     <p><span className="font-semibold text-gray-700 dark:text-slate-200">Reason:</span> <span className="italic">"{createdAttendee.reason}"</span></p>
                   )}
                 </div>
-
-                <button
-                  onClick={handleRegisterAnother}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium transition-all shadow-md shadow-blue-200 dark:shadow-blue-900/30"
-                >
-                  Submit Another Response
-                </button>
               </div>
             )}
           </div>
