@@ -30,6 +30,18 @@ function lsSetSet(key: string, set: Set<string>) {
   localStorage.setItem(key, JSON.stringify([...set]));
 }
 
+// ─── Helper to parse willAttend string/boolean from Google Sheets ───
+export function parseWillAttend(value: unknown): boolean {
+  if (value === false || value === 'false' || value === 0 || value === '0') return false;
+  if (typeof value === 'string') {
+    const raw = value.trim().toLowerCase();
+    if (raw === 'will not attend' || raw === 'no' || raw === 'not attending') {
+      return false;
+    }
+  }
+  return true;
+}
+
 // ─── Context type ───
 interface DataContextType {
   attendees: Attendee[];
@@ -54,11 +66,9 @@ const DataContext = createContext<DataContextType>(null!);
 
 function seedDefaults(): Attendee[] {
   return [
-    { id: 'demo-001', name: 'Alice Johnson', email: 'alice@company.com', department: 'Engineering', position: 'Software Engineer', phone: '+1 (555) 123-4567', createdAt: new Date().toISOString() },
-    { id: 'demo-002', name: 'Bob Smith', email: 'bob@company.com', department: 'Design Office', position: 'UI/UX Designer', phone: '+1 (555) 234-5678', createdAt: new Date().toISOString() },
-    { id: 'demo-003', name: 'Carol Davis', email: 'carol@company.com', department: 'Marketing', position: 'Marketing Manager', phone: '+1 (555) 345-6789', createdAt: new Date().toISOString() },
-    { id: 'demo-004', name: 'David Lee', email: 'david@company.com', department: 'Engineering', position: 'DevOps Engineer', phone: '+1 (555) 456-7890', createdAt: new Date().toISOString() },
-    { id: 'demo-005', name: 'Eva Martinez', email: 'eva@company.com', department: 'HR Office', position: 'HR Specialist', phone: '+1 (555) 567-8901', createdAt: new Date().toISOString() },
+    { id: 'demo-001', name: 'Alice Johnson', email: 'alice@company.com', department: 'Engineering', position: 'Software Engineer', phone: '+1 (555) 123-4567', createdAt: new Date().toISOString(), willAttend: true, reason: '' },
+    { id: 'demo-002', name: 'Bob Smith', email: 'bob@company.com', department: 'Design Office', position: 'UI/UX Designer', phone: '+1 (555) 234-5678', createdAt: new Date().toISOString(), willAttend: true, reason: '' },
+    { id: 'demo-003', name: 'Carol Davis', email: 'carol@company.com', department: 'Marketing', position: 'Marketing Manager', phone: '+1 (555) 345-6789', createdAt: new Date().toISOString(), willAttend: true, reason: '' },
   ];
 }
 
@@ -69,8 +79,22 @@ async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceReco
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   if (!data.success) throw new Error(data.error || 'Failed to fetch');
+
+  // Normalize fetched attendees (maps Columns H and I)
+  const parsedAttendees: Attendee[] = (data.attendees || []).map((a: any) => ({
+    id: String(a.id || ''),
+    name: String(a.name || ''),
+    email: String(a.email || ''),
+    department: String(a.department || ''),
+    position: String(a.position || ''),
+    phone: String(a.phone || ''),
+    createdAt: String(a.createdAt || ''),
+    willAttend: parseWillAttend(a.willAttend),
+    reason: String(a.reason || ''),
+  }));
+
   return {
-    attendees: (data.attendees || []).sort((a: Attendee, b: Attendee) => a.name.localeCompare(b.name)),
+    attendees: parsedAttendees.sort((a, b) => a.name.localeCompare(b.name)),
     records: (data.records || []).sort((a: AttendanceRecord, b: AttendanceRecord) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     ),
@@ -96,7 +120,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const synced = isGoogleSheetsConfigured();
 
-  // Tombstones — IDs the user deleted locally, filter them out even if server is stale
+  // Tombstones — IDs the user deleted locally
   const deletedRecordIdsRef = useRef<Set<string>>(lsGetSet(LS_DELETED_RECORDS));
   const deletedAttendeeIdsRef = useRef<Set<string>>(lsGetSet(LS_DELETED_ATTENDEES));
   const mutationCooldownRef = useRef<number>(0);
@@ -111,7 +135,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshData = useCallback(async () => {
-    // Skip refresh if a mutation was very recent (prevents stale read overwrite)
     if (Date.now() - mutationCooldownRef.current < 2500) return;
 
     if (synced) {
@@ -124,14 +147,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         lsSet(LS_RECORDS, filtered.records);
       } catch (err) {
         console.error('GS fetch failed:', err);
-        const a = lsGet<Attendee>(LS_ATTENDEES);
+        const a = lsGet<Attendee>(LS_ATTENDEES).map(item => ({ ...item, willAttend: parseWillAttend(item.willAttend) }));
         const r = lsGet<AttendanceRecord>(LS_RECORDS);
         const filtered = applyTombstones(a, r);
         setAttendees(filtered.attendees);
         setRecords(filtered.records);
       }
     } else {
-      let stored = lsGet<Attendee>(LS_ATTENDEES);
+      let stored = lsGet<Attendee>(LS_ATTENDEES).map(item => ({ ...item, willAttend: parseWillAttend(item.willAttend) }));
       if (stored.length === 0) {
         stored = seedDefaults();
         lsSet(LS_ATTENDEES, stored);
@@ -156,7 +179,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ── Attendees ──
   const addAttendeeFn = useCallback(async (data: Omit<Attendee, 'id' | 'createdAt'>) => {
-    const attendee: Attendee = { ...data, id: uuidv4(), createdAt: new Date().toISOString() };
+    const attendee: Attendee = { 
+      ...data, 
+      id: uuidv4(), 
+      createdAt: new Date().toISOString(),
+      willAttend: data.willAttend !== false,
+      reason: data.reason || ''
+    };
     setAttendees(prev => [...prev, attendee].sort((a,b)=>a.name.localeCompare(b.name)));
     const next = [...lsGet<Attendee>(LS_ATTENDEES), attendee];
     lsSet(LS_ATTENDEES, next);
@@ -174,14 +203,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [synced, refreshData]);
 
   const updateAttendeeFn = useCallback(async (attendee: Attendee) => {
-    setAttendees(prev => prev.map(a => a.id === attendee.id ? attendee : a));
-    const next = lsGet<Attendee>(LS_ATTENDEES).map(a => a.id === attendee.id ? attendee : a);
+    const updated = {
+      ...attendee,
+      willAttend: attendee.willAttend !== false,
+      reason: attendee.reason || ''
+    };
+    setAttendees(prev => prev.map(a => a.id === updated.id ? updated : a));
+    const next = lsGet<Attendee>(LS_ATTENDEES).map(a => a.id === updated.id ? updated : a);
     lsSet(LS_ATTENDEES, next);
     mutationCooldownRef.current = Date.now();
 
     if (synced) {
       try {
-        await gsPost('updateAttendee', { attendee });
+        await gsPost('updateAttendee', { attendee: updated });
         setTimeout(refreshData, 1200);
       } catch (err) {
         console.error('updateAttendee failed', err);
@@ -241,28 +275,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const recordToDelete = records.find(r => r.id === id);
     const nextLocal = records.filter(r => r.id !== id);
 
-    // Optimistic UI update
     setRecords(nextLocal);
     lsSet(LS_RECORDS, nextLocal);
     mutationCooldownRef.current = Date.now();
 
     if (synced) {
       try {
-        // 1) Fetch the latest records directly from Google Sheets
         const latest = await gsGet();
         const remoteNext = latest.records.filter(r => String(r.id).trim() !== String(id).trim());
 
-        // 2) Try true per-row delete first (like Clear All but for one row)
         try {
           await gsPost('deleteRecord', { id, record: recordToDelete || null });
         } catch (singleErr) {
           console.warn('deleteRecord direct row delete failed, using replaceRecords', singleErr);
         }
 
-        // 3) Always enforce final sheet state by rewriting remaining records from the live remote list
         await gsPost('replaceRecords', { records: remoteNext });
 
-        // 4) Re-fetch from the sheet itself so all devices converge on the same Records tab state
         mutationCooldownRef.current = 0;
         await refreshData();
         return;
@@ -275,7 +304,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [synced, records, refreshData]);
 
   const clearRecordsFn = useCallback(async () => {
-    // Tombstone all current records
     records.forEach(r => deletedRecordIdsRef.current.add(r.id));
     lsSetSet(LS_DELETED_RECORDS, deletedRecordIdsRef.current);
 
