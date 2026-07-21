@@ -8,7 +8,7 @@
  * 2. Go to Extensions → Apps Script
  * 3. Delete any existing code
  * 4. Paste this entire file
- * 5. Click "Deploy" → "New deployment" (or "Manage deployments" → "Edit" → "New version")
+ * 5. Click "Deploy" → "New deployment"
  * 6. Select type: "Web app"
  * 7. Set "Execute as": Me (your account)
  * 8. Set "Who has access": Anyone
@@ -16,11 +16,11 @@
  * 10. Copy the Web App URL
  *
  * Your Google Sheet must have three sheets (tabs):
- * - "Attendees" with headers: id | name | email | department | position | phone | createdAt | willAttend | reason
- * - "Records" with headers: id | attendeeId | attendeeName | attendeeEmail | attendeeDepartment | timestamp | type
- * - "AdminPins" with headers: pin | label | active
- * Example row: 1234 | Main Admin | TRUE
- * Tip: format the pin column as Plain text to preserve leading zeros.
+ * - "Attendees" with headers: id, name, email, department, position, phone, createdAt
+ * - "Records" with headers: id, attendeeId, attendeeName, attendeeEmail, attendeeDepartment, timestamp, type
+ * - "AdminPins" with headers: pin, label, active
+ *   Example row: 1234 | Main Admin | TRUE
+ *   Tip: format the pin column as Plain text to preserve leading zeros.
  */
 
 function getSheet(name) {
@@ -160,11 +160,6 @@ function doPost(e) {
     if (action === 'addAttendee') {
       const sheet = getSheet('Attendees');
       const attendee = data.attendee;
-      
-      // Column H (willAttend): Converts boolean to string 'Will Attend' / 'Will Not Attend'
-      const attendanceStatus = attendee.willAttend !== false ? 'Will Attend' : 'Will Not Attend';
-      const attendanceReason = attendee.reason || '';
-
       sheet.appendRow([
         attendee.id,
         attendee.name,
@@ -173,8 +168,6 @@ function doPost(e) {
         attendee.position,
         attendee.phone || '',
         attendee.createdAt,
-        attendanceStatus, // Column H
-        attendanceReason, // Column I
       ]);
       result.attendee = attendee;
     }
@@ -185,11 +178,7 @@ function doPost(e) {
       const rowIndex = findRowById(sheet, attendee.id);
 
       if (rowIndex > 0) {
-        const attendanceStatus = attendee.willAttend !== false ? 'Will Attend' : 'Will Not Attend';
-        const attendanceReason = attendee.reason || '';
-
-        // Updated width to 9 columns (A to I)
-        sheet.getRange(rowIndex, 1, 1, 9).setValues([[
+        sheet.getRange(rowIndex, 1, 1, 7).setValues([[
           attendee.id,
           attendee.name,
           attendee.email,
@@ -197,8 +186,6 @@ function doPost(e) {
           attendee.position,
           attendee.phone || '',
           attendee.createdAt,
-          attendanceStatus, // Column H
-          attendanceReason, // Column I
         ]]);
         result.attendee = attendee;
       } else {

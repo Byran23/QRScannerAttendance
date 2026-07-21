@@ -14,7 +14,7 @@ export default function RegistrationForm() {
     department: '', 
     position: '', 
     phone: '',
-    willAttend: 'yes', // 'yes' | 'no'
+    willAttend: 'yes',
     reason: '' 
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -32,7 +32,6 @@ export default function RegistrationForm() {
     if (!form.department.trim()) errs.department = 'Department/Office is required';
     if (!form.position.trim()) errs.position = 'Position is required';
     
-    // Require reason if attending status is "no"
     if (form.willAttend === 'no' && !form.reason.trim()) {
       errs.reason = 'Please state your reason for not attending';
     }
@@ -108,7 +107,6 @@ export default function RegistrationForm() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
-      {/* Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-50">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-center">
           <div className="flex items-center gap-2">
@@ -125,7 +123,6 @@ export default function RegistrationForm() {
 
       <main className="max-w-lg mx-auto px-4 py-6">
         {!submitted ? (
-          /* ─── Registration Form ─── */
           <div className="space-y-5">
             <div className="text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -135,7 +132,6 @@ export default function RegistrationForm() {
               <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Fill in your details to confirm your attendance status</p>
             </div>
 
-            {/* Connection status */}
             {!sheetConfigured && (
               <div className="bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-xl p-3 flex items-center gap-2.5">
                 <CloudOff size={16} className="text-orange-600 dark:text-orange-400 shrink-0" />
@@ -146,7 +142,6 @@ export default function RegistrationForm() {
             )}
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
-              {/* Live preview */}
               <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl mb-5">
                 <div className={`w-12 h-12 rounded-full ${previewBg} flex items-center justify-center text-white text-lg font-bold transition-colors`}>
                   {previewInitials}
@@ -171,7 +166,6 @@ export default function RegistrationForm() {
                 </div>
               </div>
 
-              {/* Error message */}
               {submitError && (
                 <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-xl flex items-center gap-2.5">
                   <AlertTriangle size={16} className="text-orange-600 dark:text-orange-400 shrink-0" />
@@ -186,7 +180,6 @@ export default function RegistrationForm() {
                 <Field label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Legislative Staff" required disabled={submitting} />
                 <Field label="Phone (optional)" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="+63 912 345 6789" disabled={submitting} />
 
-                {/* Will Attend / Will Not Attend Selection */}
                 <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     Attendance Confirmation <span className="text-orange-500">*</span>
@@ -230,7 +223,6 @@ export default function RegistrationForm() {
                   </div>
                 </div>
 
-                {/* Reason Text Area (Visible when "Will Not Attend" is selected) */}
                 {form.willAttend === 'no' && (
                   <div className="animate-fade-in">
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
@@ -277,9 +269,7 @@ export default function RegistrationForm() {
             </p>
           </div>
         ) : createdAttendee ? (
-          /* ─── Success + QR Code ─── */
           <div className="space-y-5 animate-fade-in">
-            {/* Success Banner */}
             <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-2xl p-5 text-center">
               <CheckCircle size={40} className="text-green-600 dark:text-green-400 mx-auto mb-3" />
               <h2 className="text-xl font-bold text-green-800 dark:text-green-300">Registration Successful!</h2>
@@ -288,7 +278,6 @@ export default function RegistrationForm() {
               </p>
             </div>
 
-            {/* Saved-to confirmation */}
             {synced && (
               <div className="flex items-center justify-center gap-2 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 py-2 rounded-lg">
                 <CheckCircle size={14} />
@@ -296,7 +285,6 @@ export default function RegistrationForm() {
               </div>
             )}
 
-            {/* Attendee Card + QR */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 text-center">
               <div className={`w-16 h-16 rounded-full ${getInitialsBg(createdAttendee.name)} flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3`}>
                 {getInitials(createdAttendee.name)}
@@ -305,7 +293,6 @@ export default function RegistrationForm() {
               <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{createdAttendee.department} · {createdAttendee.position}</p>
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{createdAttendee.email || 'No email'} · {createdAttendee.phone || 'No phone'}</p>
 
-              {/* Status Indicator */}
               <div className="mt-3">
                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                   createdAttendee.willAttend !== false
@@ -321,7 +308,6 @@ export default function RegistrationForm() {
                 )}
               </div>
 
-              {/* QR Code */}
               <div ref={qrRef} className="inline-block bg-white p-5 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-600 mt-5">
                 <QRCodeSVG
                   value={JSON.stringify({
@@ -344,7 +330,6 @@ export default function RegistrationForm() {
                 Screenshot or download this QR code for attendance records
               </p>
 
-              {/* Actions */}
               <div className="flex flex-col gap-3 mt-5">
                 <button
                   onClick={handleDownloadQR}
