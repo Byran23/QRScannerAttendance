@@ -89,10 +89,19 @@ export default function QRScanner() {
       const scanner = new Html5Qrcode('qr-reader');
       scannerRef.current = scanner;
 
-      // Increased scanner detection box width and height to 350px for larger target acquisition
+      // Dynamic qrbox calculation based on container width for perfect square framing
+      const qrboxFunction = (viewfinderWidth: number, viewfinderHeight: number) => {
+        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+        const qrboxSize = Math.floor(minEdge * 0.75); // 75% of the square viewport
+        return {
+          width: qrboxSize,
+          height: qrboxSize
+        };
+      };
+
       await scanner.start(
         { facingMode: 'environment' }, 
-        { fps: 15, qrbox: { width: 350, height: 350 }, aspectRatio: 1.0 }, 
+        { fps: 15, qrbox: qrboxFunction, aspectRatio: 1.0 }, 
         handleScan, 
         () => {}
       );
@@ -116,42 +125,42 @@ export default function QRScanner() {
   }, []);
 
   return (
-    <div className="space-y-4 max-w-4xl mx-auto">
+    <div className="space-y-4 max-w-2xl mx-auto">
       <div>
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white">QR Scanner</h2>
         <p className="text-gray-500 dark:text-slate-400 text-sm">Scan attendee QR codes to record check-in/check-out</p>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors">
-        <div className="relative">
-          {/* Expanded camera height to 600px dynamic viewport height */}
+        {/* Square container wrapper */}
+        <div className="relative w-full aspect-square max-w-[600px] mx-auto bg-gray-900 flex items-center justify-center">
           <div 
             id="qr-reader" 
-            className={`w-full ${isScanning ? 'h-[60vh] min-h-[600px]' : 'h-0 overflow-hidden'}`} 
+            className={`w-full h-full ${isScanning ? 'block' : 'hidden'}`} 
           />
           
           {!isScanning && !cameraError && !pendingScan && (
-            <div className="flex flex-col items-center justify-center h-[60vh] min-h-[500px] py-16 px-6">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-100 to-orange-100 dark:from-blue-900/50 dark:to-orange-900/50 flex items-center justify-center mb-6">
-                <Camera size={56} className="text-blue-600 dark:text-blue-400" />
+            <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center bg-white dark:bg-slate-900">
+              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-blue-100 to-orange-100 dark:from-blue-900/50 dark:to-orange-900/50 flex items-center justify-center mb-6">
+                <Camera size={52} className="text-blue-600 dark:text-blue-400" />
               </div>
               <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Ready to Scan</h3>
-              <p className="text-gray-500 dark:text-slate-400 text-base text-center max-w-sm mb-8">Point your camera at an attendee's QR code to record attendance</p>
-              <button onClick={startScanner} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-xl font-medium flex items-center gap-3 transition-all shadow-xl shadow-blue-200 dark:shadow-blue-900/30 text-xl">
-                <Camera size={26} />Start Camera
+              <p className="text-gray-500 dark:text-slate-400 text-sm max-w-xs mb-8">Point your camera at an attendee's QR code to record attendance</p>
+              <button onClick={startScanner} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-medium flex items-center gap-2.5 transition-all shadow-xl shadow-blue-200 dark:shadow-blue-900/30 text-lg">
+                <Camera size={24} />Start Camera
               </button>
             </div>
           )}
 
           {cameraError && (
-            <div className="flex flex-col items-center justify-center h-[60vh] min-h-[500px] py-16 px-6">
-              <div className="w-24 h-24 rounded-full bg-orange-50 dark:bg-orange-950/50 flex items-center justify-center mb-4">
-                <CameraOff size={44} className="text-orange-500 dark:text-orange-400" />
+            <div className="flex flex-col items-center justify-center w-full h-full p-6 text-center bg-white dark:bg-slate-900">
+              <div className="w-20 h-20 rounded-full bg-orange-50 dark:bg-orange-950/50 flex items-center justify-center mb-4">
+                <CameraOff size={40} className="text-orange-500 dark:text-orange-400" />
               </div>
               <h3 className="text-xl font-semibold text-orange-700 dark:text-orange-400 mb-2">Camera Error</h3>
-              <p className="text-orange-500 dark:text-orange-400 text-base text-center max-w-sm mb-6">{cameraError}</p>
-              <button onClick={startScanner} className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-xl font-medium flex items-center gap-2 transition-all text-lg">
-                <RotateCcw size={20} />Try Again
+              <p className="text-orange-500 dark:text-orange-400 text-sm max-w-sm mb-6">{cameraError}</p>
+              <button onClick={startScanner} className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-xl font-medium flex items-center gap-2 transition-all text-base">
+                <RotateCcw size={18} />Try Again
               </button>
             </div>
           )}
@@ -172,7 +181,7 @@ export default function QRScanner() {
         )}
 
         {scanFeedback && !pendingScan && (
-          <div className={`mx-4 mb-4 rounded-xl p-4 flex items-center gap-3 animate-bounce-in ${scanFeedback.type === 'success' ? 'bg-green-50 dark:bg-green-950/50' : scanFeedback.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-950/50' : 'bg-orange-50 dark:bg-orange-950/50'}`}>
+          <div className={`mx-4 my-4 rounded-xl p-4 flex items-center gap-3 animate-bounce-in ${scanFeedback.type === 'success' ? 'bg-green-50 dark:bg-green-950/50' : scanFeedback.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-950/50' : 'bg-orange-50 dark:bg-orange-950/50'}`}>
             {scanFeedback.type === 'success' ? <CheckCircle size={24} className="text-green-600 dark:text-green-400 shrink-0" /> : scanFeedback.type === 'warning' ? <AlertTriangle size={24} className="text-yellow-600 dark:text-yellow-400 shrink-0" /> : <XCircle size={24} className="text-orange-600 dark:text-orange-400 shrink-0" />}
             <div>
               <p className={`font-semibold text-base ${scanFeedback.type === 'success' ? 'text-green-800 dark:text-green-300' : scanFeedback.type === 'warning' ? 'text-yellow-800 dark:text-yellow-300' : 'text-orange-800 dark:text-orange-300'}`}>{scanFeedback.message}</p>
