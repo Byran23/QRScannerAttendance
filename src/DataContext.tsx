@@ -30,7 +30,7 @@ function lsSetSet(key: string, set: Set<string>) {
   localStorage.setItem(key, JSON.stringify([...set]));
 }
 
-// ─── Helper to parse willAttend string/boolean from Google Sheets ───
+// ─── Helper to parse willAttend string/boolean ───
 export function parseWillAttend(value: unknown): boolean {
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
   if (typeof value === 'string') {
@@ -57,6 +57,7 @@ interface DataContextType {
   getAttendeeById: (id: string) => Attendee | undefined;
 
   addRecord: (attendee: Attendee, type: 'check-in' | 'check-out') => Promise<AttendanceRecord>;
+  checkInAttendee: (attendeeId: string) => Promise<AttendanceRecord | undefined>; // <-- Added function type
   deleteRecord: (id: string) => Promise<void>;
   clearRecords: () => Promise<void>;
   getAttendeeLastAction: (attendeeId: string) => AttendanceRecord | undefined;
@@ -80,7 +81,6 @@ async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceReco
   const data = await res.json();
   if (!data.success) throw new Error(data.error || 'Failed to fetch');
 
-  // Normalize fetched attendees (maps Columns H and I)
   const parsedAttendees: Attendee[] = (data.attendees || []).map((a: any) => ({
     id: String(a.id || ''),
     name: String(a.name || ''),
@@ -120,7 +120,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const synced = isGoogleSheetsConfigured();
 
-  // Tombstones — IDs the user deleted locally
   const deletedRecordIdsRef = useRef<Set<string>>(lsGetSet(LS_DELETED_RECORDS));
   const deletedAttendeeIdsRef = useRef<Set<string>>(lsGetSet(LS_DELETED_ATTENDEES));
   const mutationCooldownRef = useRef<number>(0);
@@ -271,6 +270,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return record;
   }, [synced, refreshData]);
 
+  // ── Check In Function ──
+  const checkInAttendeeFn = useCallback(async (attendeeId: string) => {
+    const attendee = attendees.find(a => a.id === attendeeId);
+    if (!attendee) return undefined;
+
+    return await addRecordFn(attendee, 'check-in');
+  }, [attendees, addRecordFn]);
+
   const deleteRecordFn = useCallback(async (id: string) => {
     const recordToDelete = records.find(r => r.id === id);
     const nextLocal = records.filter(r => r.id !== id);
@@ -340,6 +347,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deleteAttendee: deleteAttendeeFn,
         getAttendeeById,
         addRecord: addRecordFn,
+        checkInAttendee: checkInAttendeeFn, // <-- Passed into provider value
         deleteRecord: deleteRecordFn,
         clearRecords: clearRecordsFn,
         getAttendeeLastAction,
