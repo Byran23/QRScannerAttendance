@@ -56,13 +56,21 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     }
   };
 
+  // Normalized Attendance Check
   const checkWillAttend = (a: Attendee): boolean => {
     if (a.willAttend === false) return false;
     if (a.willAttend === true) return true;
 
-    const raw = String(a.willAttend || '').toLowerCase().trim();
-    if (raw === 'will not attend' || raw === 'no' || raw === 'false') return false;
-    
+    const val = String(a.willAttend || '').toLowerCase().trim();
+    if (
+      val === 'will not attend' ||
+      val === 'not attending' ||
+      val === 'no' ||
+      val === 'false' ||
+      val === '0'
+    ) {
+      return false;
+    }
     return true;
   };
 
@@ -132,7 +140,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </button>
       </div>
 
-      {/* Share Registration Link */}
+      {/* Share Link */}
       <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
@@ -146,9 +154,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             <button
               onClick={handleCopyLink}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                linkCopied
-                  ? 'bg-green-600 text-white'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                linkCopied ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
             >
               {linkCopied ? <Check size={14} /> : <Link size={14} />}
@@ -208,7 +214,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
               placeholder="Search by name, email, dept, or reason..." 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 transition-colors text-sm" 
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm" 
             />
           </div>
 
@@ -217,7 +223,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             <select 
               value={filterDept} 
               onChange={e => setFilterDept(e.target.value)} 
-              className="w-full pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm appearance-none cursor-pointer transition-colors"
+              className="w-full pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm appearance-none cursor-pointer"
             >
               <option value="all">All Dept/Office</option>
               {departments.map(d => <option key={d} value={d}>{d}</option>)}
@@ -229,7 +235,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             <select 
               value={sortBy} 
               onChange={e => setSortBy(e.target.value as SortOption)} 
-              className="w-full pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm appearance-none cursor-pointer transition-colors"
+              className="w-full pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm appearance-none cursor-pointer"
             >
               <option value="date-desc">Registered (Newest)</option>
               <option value="date-asc">Registered (Oldest)</option>
@@ -242,13 +248,9 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       </div>
 
       {sorted.length === 0 ? (
-        <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 transition-colors">
+        <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800">
           <Users size={48} className="mx-auto text-gray-300 dark:text-slate-600 mb-4" />
           <p className="text-gray-500 dark:text-slate-400 font-medium">No attendees found</p>
-          <p className="text-gray-400 dark:text-slate-500 text-sm mt-1">{search || filterDept !== 'all' || filterAttendance !== 'all' ? 'Try adjusting your filters or search' : 'Add your first attendee to get started'}</p>
-          {!search && filterDept === 'all' && filterAttendance === 'all' && (
-            <button onClick={() => onNavigate('add-attendee')} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition-all"><Plus size={16} className="inline mr-1" />Add Attendee</button>
-          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -276,7 +278,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
                       
-                      {/* Attendance Intention Badge */}
+                      {/* Badge */}
                       <div className="relative inline-block">
                         <span 
                           onClick={(e) => {
@@ -294,7 +296,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                           className={`text-xs px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-transform active:scale-95 ${
                             isAttending 
                               ? 'bg-green-100 dark:bg-green-950/80 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800' 
-                              : 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-200 dark:hover:bg-red-900/80'
+                              : 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
                           }`}
                         >
                           {isAttending ? <CheckCircle2 size={13} className="shrink-0" /> : <XCircle size={13} className="shrink-0" />}
@@ -302,7 +304,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                           {!isAttending && <AlertCircle size={12} className="ml-0.5 text-red-500 animate-pulse shrink-0" />}
                         </span>
 
-                        {/* Non-attendance Reason Tooltip Popover */}
+                        {/* Tooltip Reason */}
                         {!isAttending && isTooltipOpen && (
                           <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-xs rounded-xl shadow-xl border border-slate-700 z-50 animate-fade-in">
                             <div className="flex items-center gap-1.5 text-red-400 font-semibold mb-1 uppercase text-[10px] tracking-wider">
@@ -316,7 +318,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                         )}
                       </div>
 
-                      {/* Live Scan Status (Only if Attending) */}
+                      {/* Live Status */}
                       {isAttending && (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           status === 'present' 
@@ -334,6 +336,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                     <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">{attendee.email || 'No email'} · {attendee.phone || 'No phone'}</p>
                   </div>
 
+                  {/* Actions Column */}
                   <div className="flex items-center gap-1 shrink-0">
                     <button 
                       onClick={() => toggleExpand(attendee.id)} 
@@ -343,7 +346,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </button>
                     
-                    {/* QR Code button only rendered if attending */}
+                    {/* QR Code Button STRICTLY Hidden for Non-Attendees */}
                     {isAttending && (
                       <button 
                         onClick={() => onNavigate('qr-view', attendee)} 
@@ -361,7 +364,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
                 {/* Expanded Details */}
                 {isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 grid grid-cols-1 sm:grid-cols-2 gap-2 animate-fade-in">
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <span className="font-medium text-gray-700 dark:text-slate-300">Registration Date: </span>
                       {attendee.createdAt ? new Date(attendee.createdAt).toLocaleString() : 'N/A'}
@@ -373,13 +376,13 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                   </div>
                 )}
 
-                {/* Delete Confirm */}
+                {/* Delete Confirmation */}
                 {showDeleteConfirm === attendee.id && (
                   <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/50 rounded-xl flex items-center justify-between">
                     <p className="text-sm text-orange-700 dark:text-orange-400">Delete this attendee?</p>
                     <div className="flex gap-2">
-                      <button onClick={() => setShowDeleteConfirm(null)} className="px-3 py-1 text-sm bg-white dark:bg-slate-800 rounded-lg text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">Cancel</button>
-                      <button onClick={() => handleDelete(attendee.id)} className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700">Delete</button>
+                      <button onClick={() => setShowDeleteConfirm(null)} className="px-3 py-1 text-sm bg-white dark:bg-slate-800 rounded-lg text-gray-600 dark:text-slate-300">Cancel</button>
+                      <button onClick={() => handleDelete(attendee.id)} className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg">Delete</button>
                     </div>
                   </div>
                 )}
