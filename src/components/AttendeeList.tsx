@@ -276,7 +276,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
                       
-                      {/* Attendance Intention Badge with Hover/Click Tooltip Popover */}
+                      {/* Attendance Intention Badge */}
                       <div className="relative inline-block">
                         <span 
                           onClick={(e) => {
@@ -302,7 +302,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                           {!isAttending && <AlertCircle size={12} className="ml-0.5 text-red-500 animate-pulse shrink-0" />}
                         </span>
 
-                        {/* Hover/Click Non-attendance Reason Tooltip */}
+                        {/* Non-attendance Reason Tooltip Popover */}
                         {!isAttending && isTooltipOpen && (
                           <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-xs rounded-xl shadow-xl border border-slate-700 z-50 animate-fade-in">
                             <div className="flex items-center gap-1.5 text-red-400 font-semibold mb-1 uppercase text-[10px] tracking-wider">
@@ -311,7 +311,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                             <p className="italic text-slate-200 font-normal">
                               {attendee.reason ? `"${attendee.reason}"` : 'No specific reason provided.'}
                             </p>
-                            {/* Tooltip Arrow */}
                             <div className="absolute left-4 top-full w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-slate-900 dark:border-t-slate-800"></div>
                           </div>
                         )}
@@ -343,7 +342,18 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                     >
                       {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </button>
-                    <button onClick={() => onNavigate('qr-view', attendee)} className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg text-blue-600 dark:text-blue-400 transition-colors" title="View QR Code"><QrCode size={18} /></button>
+                    
+                    {/* QR Code button only rendered if attending */}
+                    {isAttending && (
+                      <button 
+                        onClick={() => onNavigate('qr-view', attendee)} 
+                        className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg text-blue-600 dark:text-blue-400 transition-colors" 
+                        title="View QR Code"
+                      >
+                        <QrCode size={18} />
+                      </button>
+                    )}
+
                     <button onClick={() => onNavigate('edit-attendee', attendee)} className="p-2 hover:bg-sky-50 dark:hover:bg-sky-950 rounded-lg text-sky-600 dark:text-sky-400 transition-colors" title="Edit"><Edit size={18} /></button>
                     <button onClick={() => setShowDeleteConfirm(attendee.id)} className="p-2 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-lg text-orange-500 dark:text-orange-400 transition-colors" title="Delete"><Trash2 size={18} /></button>
                   </div>
