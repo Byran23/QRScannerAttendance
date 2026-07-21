@@ -15,12 +15,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [pendingScan, setPendingScan] = useState<{ attendee: Attendee; actionType: 'check-in' | 'check-out' } | null>(null);
   const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error' | 'warning'; message: string; detail?: string } | null>(null);
 
-  // Filter out attendees who marked 'will not attend'
-  const activeAttendees = attendees.filter(a => {
-    const status = a.status?.toLowerCase().trim();
-    return status !== 'i will not attend' && status !== 'will-not-attend' && status !== 'not-attending';
-  });
-
   const checkedInToday = new Set(todayRecords.filter(r => r.type === 'check-in').map(r => r.attendeeId));
   const presentIds = new Set<string>();
   for (const id of checkedInToday) {
@@ -28,7 +22,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     if (last && last.type === 'check-in') presentIds.add(id);
   }
 
-  const totalAttendees = activeAttendees.length;
+  const totalAttendees = attendees.length;
   const presentCount = presentIds.size;
   const absentCount = totalAttendees - checkedInToday.size;
 
@@ -80,12 +74,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
         <div className="bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400 rounded-2xl p-4 shadow-sm transition-colors">
           <UserX size={20} className="mb-2" />
-          <p className="text-2xl font-bold">{absentCount < 0 ? 0 : absentCount}</p>
+          <p className="text-2xl font-bold">{absentCount}</p>
           <p className="text-xs opacity-75">Absent</p>
         </div>
       </div>
 
-      {/* Attendance Rate */}
+      {/* Attendance Rate — directly after Total/Present/Absent */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
         <div className="flex justify-between items-center mb-3">
           <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Attendance Rate</h3>
@@ -94,11 +88,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         <div className="relative w-full h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-orange-500 rounded-full transition-all duration-1000" style={{ width: `${attendancePct}%` }} />
         </div>
-        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">{checkedInToday.size} of {totalAttendees} expected attendees checked in today</p>
+        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">{checkedInToday.size} of {totalAttendees} attendees checked in today</p>
       </div>
 
-      {/* Manual Entry Search Component */}
-      <AttendeeSearch onSelect={handleManualSelect} excludeStatus={['i will not attend', 'will-not-attend', 'not-attending']} />
+      {/* Manual Entry */}
+      <AttendeeSearch onSelect={handleManualSelect} />
 
       {/* Confirmation Modal */}
       {pendingScan && (
