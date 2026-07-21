@@ -11,7 +11,6 @@ interface AttendeeListProps {
 type SortOption = 'name-asc' | 'name-desc' | 'office-asc' | 'date-desc' | 'date-asc';
 
 export default function AttendeeList({ onNavigate }: AttendeeListProps) {
-  // Destructured checkInAttendee (or checkIn) from context
   const { attendees, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
@@ -346,23 +345,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
                   {/* Actions Column */}
                   <div className="flex items-center gap-1 shrink-0">
-                    {/* Check In Button strictly for Attendees */}
-                    {isAttending && (
-                      <button
-                        onClick={() => handleCheckIn(attendee)}
-                        disabled={isCheckedIn}
-                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          isCheckedIn
-                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 cursor-default opacity-80'
-                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm active:scale-95'
-                        }`}
-                        title={isCheckedIn ? 'Already Checked In' : 'Check In Attendee'}
-                      >
-                        {isCheckedIn ? <Check size={14} /> : <LogIn size={14} />}
-                        <span>{isCheckedIn ? 'Checked In' : 'Check In'}</span>
-                      </button>
-                    )}
-
                     <button 
                       onClick={() => toggleExpand(attendee.id)} 
                       className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 transition-colors" 
@@ -389,15 +371,34 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
                 {/* Expanded Details */}
                 {isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <span className="font-medium text-gray-700 dark:text-slate-300">Registration Date: </span>
-                      {attendee.createdAt ? new Date(attendee.createdAt).toLocaleString() : 'N/A'}
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
+                      <div>
+                        <span className="font-medium text-gray-700 dark:text-slate-300">Registration Date: </span>
+                        {attendee.createdAt ? new Date(attendee.createdAt).toLocaleString() : 'N/A'}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700 dark:text-slate-300">ID Reference: </span>
+                        <span className="font-mono text-[11px]">{attendee.id}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-medium text-gray-700 dark:text-slate-300">ID Reference: </span>
-                      <span className="font-mono text-[11px]">{attendee.id}</span>
-                    </div>
+
+                    {/* Check In Button rendered inside expanded section strictly for attending users */}
+                    {isAttending && (
+                      <button
+                        onClick={() => handleCheckIn(attendee)}
+                        disabled={isCheckedIn}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
+                          isCheckedIn
+                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 cursor-default opacity-80'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm active:scale-95'
+                        }`}
+                        title={isCheckedIn ? 'Already Checked In' : 'Check In Attendee'}
+                      >
+                        {isCheckedIn ? <Check size={14} /> : <LogIn size={14} />}
+                        <span>{isCheckedIn ? 'Checked In' : 'Check In'}</span>
+                      </button>
+                    )}
                   </div>
                 )}
 
