@@ -55,12 +55,18 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     }
   };
 
-  // Helper to accurately check attendance from Boolean or Google Sheets String formats
+  /**
+   * Helper function to correctly determine if an attendee is attending.
+   * Handles Booleans (true/false) as well as Google Sheets string outputs ("Will Not Attend", "false", etc.)
+   */
   const checkWillAttend = (a: Attendee): boolean => {
     if (a.willAttend === false) return false;
+    if (a.willAttend === true) return true;
+
     const raw = String(a.willAttend || '').toLowerCase().trim();
     if (raw === 'will not attend' || raw === 'no' || raw === 'false') return false;
-    return true;
+    
+    return true; // Default to true if not explicitly set to "no" / false
   };
 
   const departments = [...new Set(attendees.map(a => a.department))];
@@ -131,7 +137,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </button>
       </div>
 
-      {/* Share Registration Form */}
+      {/* Share Registration Form Link */}
       <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
@@ -200,9 +206,8 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
           </button>
         </div>
 
-        {/* Search, Dept Filter, and Sort Option */}
+        {/* Search, Dept Filter, and Sort Options */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-          {/* Search Field */}
           <div className="relative sm:col-span-6">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <input 
@@ -214,7 +219,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             />
           </div>
 
-          {/* Office/Department Filter */}
           <div className="relative sm:col-span-3">
             <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -227,7 +231,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Sort Dropdown */}
           <div className="relative sm:col-span-3">
             <ArrowUpDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -281,7 +284,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
                       
-                      {/* Attendance Confirmation Badge */}
+                      {/* Attendance Intention Badge */}
                       <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5 shadow-sm ${
                         isAttending 
                           ? 'bg-green-100 dark:bg-green-950/80 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800' 
@@ -291,7 +294,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                         {isAttending ? 'Will Attend' : 'Will Not Attend'}
                       </span>
 
-                      {/* Check-in / Live Scan Status */}
+                      {/* Check-in Status (Only shown if attending) */}
                       {isAttending && (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           status === 'present' 
@@ -308,19 +311,19 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                     <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 truncate">{attendee.department} · {attendee.position}</p>
                     <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">{attendee.email || 'No email'} · {attendee.phone || 'No phone'}</p>
 
-                    {/* Always-visible Reason Box for Non-Attendees */}
+                    {/* Reason Box displayed directly under non-attending users */}
                     {!isAttending && (
                       <div className="mt-2.5 p-2.5 bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/50 rounded-xl text-xs text-red-800 dark:text-red-300 flex items-start gap-2">
                         <AlertCircle size={15} className="text-red-500 dark:text-red-400 shrink-0 mt-0.5" />
                         <div>
                           <span className="font-semibold block text-[11px] uppercase tracking-wider text-red-600 dark:text-red-400">Reason for Non-Attendance:</span>
-                          <p className="italic mt-0.5 text-xs">{attendee.reason ? `"${attendee.reason}"` : 'No specific reason specified.'}</p>
+                          <p className="italic mt-0.5 text-xs">{attendee.reason ? `"${attendee.reason}"` : 'No reason specified.'}</p>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Actions Column */}
+                  {/* Action Buttons */}
                   <div className="flex items-center gap-1 shrink-0">
                     <button 
                       onClick={() => toggleExpand(attendee.id)} 
@@ -335,7 +338,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                   </div>
                 </div>
 
-                {/* Expanded Details Panel */}
+                {/* Expanded Card Details */}
                 {isExpanded && (
                   <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 grid grid-cols-1 sm:grid-cols-2 gap-2 animate-fade-in">
                     <div>
@@ -349,7 +352,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                   </div>
                 )}
 
-                {/* Delete Confirmation Box */}
+                {/* Delete Confirmation Alert */}
                 {showDeleteConfirm === attendee.id && (
                   <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/50 rounded-xl flex items-center justify-between">
                     <p className="text-sm text-orange-700 dark:text-orange-400">Delete this attendee?</p>
