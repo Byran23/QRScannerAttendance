@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle, ArrowUpDown } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -8,11 +8,14 @@ interface AttendeeListProps {
   onNavigate: (page: Page, data?: any) => void;
 }
 
+type SortOption = 'name-asc' | 'name-desc' | 'office-asc' | 'date-desc' | 'date-asc';
+
 export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const { attendees, deleteAttendee, getAttendeeLastAction } = useData();
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
   const [filterAttendance, setFilterAttendance] = useState<'all' | 'attending' | 'not-attending'>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('date-desc');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -54,6 +57,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
   const departments = [...new Set(attendees.map(a => a.department))];
 
+  // Filtering
   const filtered = attendees.filter(a => {
     const matchesSearch = 
       a.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -68,6 +72,23 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       (filterAttendance === 'not-attending' && a.willAttend === false);
 
     return matchesSearch && matchesDept && matchesAttendance;
+  });
+
+  // Sorting
+  const sorted = [...filtered].sort((a, b) => {
+    switch (sortBy) {
+      case 'name-asc':
+        return a.name.localeCompare(b.name);
+      case 'name-desc':
+        return b.name.localeCompare(a.name);
+      case 'office-asc':
+        return a.department.localeCompare(b.department) || a.name.localeCompare(b.name);
+      case 'date-asc':
+        return (new Date(a.createdAt || 0).getTime()) - (new Date(b.createdAt || 0).getTime());
+      case 'date-desc':
+      default:
+        return (new Date(b.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime());
+    }
   });
 
   const handleDelete = (id: string) => { deleteAttendee(id); setShowDeleteConfirm(null); };
@@ -128,7 +149,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       </div>
 
-      {/* Filters Bar */}
+      {/* Filters & Sorting Bar */}
       <div className="space-y-3">
         {/* Attendance Status Tabs */}
         <div className="flex bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit">
@@ -164,33 +185,52 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
           </button>
         </div>
 
-        {/* Search and Dept Filter */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
+        {/* Search, Dept Filter, and Sort Option */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          {/* Search Field */}
+          <div className="relative sm:col-span-6">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <input 
               type="text" 
               placeholder="Search by name, email, or dept/office..." 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 transition-colors" 
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-900 dark:text-white dark:placeholder-slate-500 transition-colors text-sm" 
             />
           </div>
-          <div className="relative">
+
+          {/* Office/Department Filter */}
+          <div className="relative sm:col-span-3">
             <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
               value={filterDept} 
               onChange={e => setFilterDept(e.target.value)} 
-              className="pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white appearance-none cursor-pointer transition-colors w-full sm:w-auto"
+              className="w-full pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm appearance-none cursor-pointer transition-colors"
             >
               <option value="all">All Dept/Office</option>
               {departments.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative sm:col-span-3">
+            <ArrowUpDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <select 
+              value={sortBy} 
+              onChange={e => setSortBy(e.target.value as SortOption)} 
+              className="w-full pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm appearance-none cursor-pointer transition-colors"
+            >
+              <option value="date-desc">Registered (Newest)</option>
+              <option value="date-asc">Registered (Oldest)</option>
+              <option value="name-asc">Alphabetical (A–Z)</option>
+              <option value="name-desc">Alphabetical (Z–A)</option>
+              <option value="office-asc">By Office/Department</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 transition-colors">
           <Users size={48} className="mx-auto text-gray-300 dark:text-slate-600 mb-4" />
           <p className="text-gray-500 dark:text-slate-400 font-medium">No attendees found</p>
@@ -201,7 +241,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(attendee => {
+          {sorted.map(attendee => {
             const status = getStatus(attendee);
             const isAttending = attendee.willAttend !== false;
 
