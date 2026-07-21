@@ -56,7 +56,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     }
   };
 
-  // Normalized Attendance Check
+  // Normalized Attendance Check (Strict check for Boolean or Google Sheets String)
   const checkWillAttend = (a: Attendee): boolean => {
     if (a.willAttend === false) return false;
     if (a.willAttend === true) return true;
@@ -383,7 +383,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       </div>
                     </div>
 
-                    {/* Check In Button rendered inside expanded section strictly for attending users */}
+                    {/* Check In Button rendered inside expanded section STRICTLY for attending users */}
                     {isAttending && (
                       <button
                         onClick={() => handleCheckIn(attendee)}
