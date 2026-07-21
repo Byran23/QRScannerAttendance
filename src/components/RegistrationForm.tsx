@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle } from 'lucide-react';
+import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
 import { getInitials, getInitialsBg } from '../utils/initials';
@@ -105,6 +105,8 @@ export default function RegistrationForm() {
   const previewInitials = form.name.trim() ? getInitials(form.name) : '?';
   const previewBg = form.name.trim() ? getInitialsBg(form.name) : 'bg-gray-400';
 
+  const isAttending = createdAttendee?.willAttend !== false;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
       <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-50">
@@ -123,6 +125,7 @@ export default function RegistrationForm() {
 
       <main className="max-w-lg mx-auto px-4 py-6">
         {!submitted ? (
+          /* ─── Registration Form ─── */
           <div className="space-y-5">
             <div className="text-center">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -252,7 +255,7 @@ export default function RegistrationForm() {
                   {submitting ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      Saving to database…
+                      Saving response…
                     </>
                   ) : (
                     <>
@@ -269,87 +272,102 @@ export default function RegistrationForm() {
             </p>
           </div>
         ) : createdAttendee ? (
+          /* ─── Success Views ─── */
           <div className="space-y-5 animate-fade-in">
-            <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-2xl p-5 text-center">
-              <CheckCircle size={40} className="text-green-600 dark:text-green-400 mx-auto mb-3" />
-              <h2 className="text-xl font-bold text-green-800 dark:text-green-300">Registration Successful!</h2>
-              <p className="text-green-600 dark:text-green-400 text-sm mt-1">
-                {synced ? 'Your data has been saved to the database.' : 'Your data has been saved locally.'}
-              </p>
-            </div>
-
-            {synced && (
-              <div className="flex items-center justify-center gap-2 text-xs text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 py-2 rounded-lg">
-                <CheckCircle size={14} />
-                Saved to Attendees Database ✓
-              </div>
-            )}
-
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 text-center">
-              <div className={`w-16 h-16 rounded-full ${getInitialsBg(createdAttendee.name)} flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3`}>
-                {getInitials(createdAttendee.name)}
-              </div>
-              <h3 className="text-lg font-bold text-gray-800 dark:text-white">{createdAttendee.name}</h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{createdAttendee.department} · {createdAttendee.position}</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{createdAttendee.email || 'No email'} · {createdAttendee.phone || 'No phone'}</p>
-
-              <div className="mt-3">
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                  createdAttendee.willAttend !== false
-                    ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
-                    : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                }`}>
-                  Status: {createdAttendee.willAttend !== false ? 'Will Attend' : 'Will Not Attend'}
-                </span>
-                {createdAttendee.willAttend === false && createdAttendee.reason && (
-                  <p className="text-xs text-gray-500 dark:text-slate-400 italic mt-1.5 px-4">
-                    "{createdAttendee.reason}"
+            {isAttending ? (
+              /* ── 1) WILL ATTEND: Success Banner + QR Code ── */
+              <>
+                <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-2xl p-5 text-center">
+                  <CheckCircle size={40} className="text-green-600 dark:text-green-400 mx-auto mb-3" />
+                  <h2 className="text-xl font-bold text-green-800 dark:text-green-300">Registration Successful!</h2>
+                  <p className="text-green-600 dark:text-green-400 text-sm mt-1">
+                    {synced ? 'Your data has been saved to the database.' : 'Your data has been saved locally.'}
                   </p>
-                )}
-              </div>
+                </div>
 
-              <div ref={qrRef} className="inline-block bg-white p-5 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-600 mt-5">
-                <QRCodeSVG
-                  value={JSON.stringify({
-                    id: createdAttendee.id,
-                    name: createdAttendee.name,
-                    email: createdAttendee.email,
-                    department: createdAttendee.department,
-                    willAttend: createdAttendee.willAttend !== false,
-                    reason: createdAttendee.reason || '',
-                  })}
-                  size={200}
-                  level="H"
-                  includeMargin={true}
-                  fgColor="#1e40af"
-                  bgColor="#ffffff"
-                />
-              </div>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 text-center">
+                  <div className={`w-16 h-16 rounded-full ${getInitialsBg(createdAttendee.name)} flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3`}>
+                    {getInitials(createdAttendee.name)}
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-white">{createdAttendee.name}</h3>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{createdAttendee.department} · {createdAttendee.position}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{createdAttendee.email || 'No email'} · {createdAttendee.phone || 'No phone'}</p>
 
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">
-                Screenshot or download this QR code for attendance records
-              </p>
+                  <div className="mt-3">
+                    <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300">
+                      Status: Will Attend
+                    </span>
+                  </div>
 
-              <div className="flex flex-col gap-3 mt-5">
-                <button
-                  onClick={handleDownloadQR}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30"
-                >
-                  <Download size={18} />
-                  Download QR Code
-                </button>
+                  <div ref={qrRef} className="inline-block bg-white p-5 rounded-2xl border-2 border-dashed border-gray-200 dark:border-slate-600 mt-5">
+                    <QRCodeSVG
+                      value={JSON.stringify({
+                        id: createdAttendee.id,
+                        name: createdAttendee.name,
+                        email: createdAttendee.email,
+                        department: createdAttendee.department,
+                        willAttend: true,
+                      })}
+                      size={200}
+                      level="H"
+                      includeMargin={true}
+                      fgColor="#1e40af"
+                      bgColor="#ffffff"
+                    />
+                  </div>
+
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">
+                    Screenshot or download this QR code for attendance records
+                  </p>
+
+                  <div className="flex flex-col gap-3 mt-5">
+                    <button
+                      onClick={handleDownloadQR}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30"
+                    >
+                      <Download size={18} />
+                      Download QR Code
+                    </button>
+                    <button
+                      onClick={handleRegisterAnother}
+                      className="w-full bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-3 rounded-xl font-medium transition-all"
+                    >
+                      Register Another Person
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* ── 2) WILL NOT ATTEND: Thank You View (NO QR CODE) ── */
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-slate-800 text-center space-y-4">
+                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-950/60 rounded-full flex items-center justify-center mx-auto text-blue-600 dark:text-blue-400">
+                  <HeartHandshake size={36} />
+                </div>
+                
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Thank You for Filling Up the Form!</h2>
+                  <p className="text-gray-500 dark:text-slate-400 text-sm mt-2">
+                    Your response has been logged successfully into our system.
+                  </p>
+                </div>
+
+                <div className="p-4 bg-gray-50 dark:bg-slate-800/60 rounded-xl text-left border border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-300 space-y-1.5">
+                  <p><span className="font-semibold text-gray-700 dark:text-slate-200">Name:</span> {createdAttendee.name}</p>
+                  <p><span className="font-semibold text-gray-700 dark:text-slate-200">Department:</span> {createdAttendee.department}</p>
+                  <p><span className="font-semibold text-gray-700 dark:text-slate-200">Status:</span> <span className="text-red-600 dark:text-red-400 font-semibold">Will Not Attend</span></p>
+                  {createdAttendee.reason && (
+                    <p><span className="font-semibold text-gray-700 dark:text-slate-200">Reason:</span> <span className="italic">"{createdAttendee.reason}"</span></p>
+                  )}
+                </div>
+
                 <button
                   onClick={handleRegisterAnother}
-                  className="w-full bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 py-3 rounded-xl font-medium transition-all"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium transition-all shadow-md shadow-blue-200 dark:shadow-blue-900/30"
                 >
-                  Register Another Person
+                  Submit Another Response
                 </button>
               </div>
-            </div>
-
-            <p className="text-center text-[11px] text-gray-400 dark:text-slate-500">
-              Present this QR code when checking in for attendance.
-            </p>
+            )}
           </div>
         ) : null}
       </main>
