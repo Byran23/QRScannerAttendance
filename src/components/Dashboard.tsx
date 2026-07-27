@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, AlertTriangle, Image as ImageIcon, Edit2, Save, X } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -10,10 +10,16 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
-  const { attendees, todayRecords, addRecord, getAttendeeLastAction } = useData();
+  const { attendees, todayRecords, addRecord, getAttendeeLastAction, eventConfig, updateEventConfig } = useData();
 
   const [pendingScan, setPendingScan] = useState<{ attendee: Attendee; actionType: 'check-in' | 'check-out' } | null>(null);
   const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error' | 'warning'; message: string; detail?: string } | null>(null);
+
+  // Event Config Edit Modal / Inline State
+  const [isEditingEvent, setIsEditingEvent] = useState(false);
+  const [eventTitleInput, setEventTitleInput] = useState(eventConfig?.title || '');
+  const [eventImageInput, setEventImageInput] = useState(eventConfig?.imageUrl || '');
+  const [isSavingEvent, setIsSavingEvent] = useState(false);
 
   const checkedInToday = new Set(todayRecords.filter(r => r.type === 'check-in').map(r => r.attendeeId));
   const presentIds = new Set<string>();
@@ -50,15 +56,127 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   const cancelScan = () => setPendingScan(null);
 
+  const handleSaveEventHeader = async () => {
+    setIsSavingEvent(true);
+    await updateEventConfig({
+      title: eventTitleInput.trim(),
+      imageUrl: eventImageInput.trim(),
+    });
+    setIsSavingEvent(false);
+    setIsEditingEvent(false);
+  };
+
   const attendancePct = totalAttendees > 0 ? Math.round((checkedInToday.size / totalAttendees) * 100) : 0;
 
   return (
     <div className="space-y-6">
-      {/* Greeting */}
-      <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500 rounded-2xl p-6 text-white shadow-xl">
-        <h1 className="text-2xl font-bold">{greeting}!</h1>
-        <p className="text-blue-100 mt-1">{dateStr}</p>
+      {/* ─── Event Header Banner ─── */}
+      <div className="relative rounded-2xl overflow-hidden shadow-xl group border border-gray-100 dark:border-slate-800 transition-all">
+        {/* Background Image or Gradient */}
+        {eventConfig?.imageUrl ? (
+          <div className="relative h-48 sm:h-56 w-full overflow-hidden bg-slate-900">
+            <img 
+              src={eventConfig.imageUrl} 
+              alt="Event Header" 
+              className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+          </div>
+        ) : (
+          <div className="h-44 sm:h-48 w-full bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
+        )}
+
+        {/* Text Content Overlay */}
+        <div className="absolute inset-0 p-6 flex flex-col justify-between text-white z-10">
+          <div className="flex justify-between items-start">
+            <button
+              onClick={() => {
+                setEventTitleInput(eventConfig?.title || '');
+                setEventImageInput(eventConfig?.imageUrl || '');
+                setIsEditingEvent(true);
+              }}
+              className="ml-auto bg-black/40 hover:bg-black/60 backdrop-blur-md text-white text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all border border-white/20 shadow-md"
+              title="Edit Event Title and Header Image"
+            >
+              <Edit2 size={13} /> Edit Header
+            </button>
+          </div>
+
+          <div>
+            {eventConfig?.title ? (
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-md uppercase tracking-wide">
+                {eventConfig.title}
+              </h1>
+            ) : (
+              <h1 className="text-2xl font-bold drop-shadow">{greeting}!</h1>
+            )}
+            <p className="text-blue-100 text-xs sm:text-sm mt-1 drop-shadow flex items-center gap-2">
+              <span>{greeting}</span> · <span>{dateStr}</span>
+            </p>
+          </div>
+        </div>
       </div>
+
+      {/* Edit Header Modal/Panel */}
+      {isEditingEvent && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-lg border border-blue-200 dark:border-blue-900 animate-fade-in space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
+            <h3 className="font-bold text-gray-800 dark:text-white text-sm flex items-center gap-2">
+              <ImageIcon size={18} className="text-blue-600 dark:text-blue-400" /> Edit Event Header
+            </h3>
+            <button onClick={() => setIsEditingEvent(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">
+                Event Title for Today (Logged to Sheet Column J)
+              </label>
+              <input 
+                type="text" 
+                value={eventTitleInput}
+                onChange={e => setEventTitleInput(e.target.value)}
+                placeholder="e.g. 1st Regular Session 2026"
+                className="w-full px-3.5 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-sm dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">
+                Header Image URL (Logged to Sheet Column K)
+              </label>
+              <input 
+                type="url" 
+                value={eventImageInput}
+                onChange={e => setEventImageInput(e.target.value)}
+                placeholder="https://example.com/banner-image.jpg"
+                className="w-full px-3.5 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-sm dark:text-white"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button 
+              type="button" 
+              onClick={() => setIsEditingEvent(false)} 
+              className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              onClick={handleSaveEventHeader}
+              disabled={isSavingEvent}
+              className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl flex items-center gap-1.5 shadow-sm"
+            >
+              <Save size={14} /> {isSavingEvent ? 'Saving...' : 'Save Header'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
@@ -79,7 +197,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       </div>
 
-      {/* Attendance Rate — directly after Total/Present/Absent */}
+      {/* Attendance Rate */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
         <div className="flex justify-between items-center mb-3">
           <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Attendance Rate</h3>

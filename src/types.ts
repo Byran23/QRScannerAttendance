@@ -10,6 +10,22 @@ export interface Attendee {
   reason?: string;               // Column I in Google Sheets
   group?: string;                // Column J in Google Sheets
   tableNo?: string;              // Column K in Google Sheets
+  title: string;      // Column J in AdminPins
+  imageUrl: string;   // Column K in AdminPins
+}
+
+export interface Attendee {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  position: string;
+  phone: string;
+  createdAt: string;
+  willAttend?: boolean | string;
+  reason?: string;
+  group?: string;
+  tableNo?: string;
 }
 
 export interface AttendanceRecord {

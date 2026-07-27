@@ -3,24 +3,10 @@
  * GOOGLE APPS SCRIPT - AttendEase API
  * ============================================================
  *
- * SETUP INSTRUCTIONS:
- * 1. Open your Google Sheet
- * 2. Go to Extensions → Apps Script
- * 3. Delete any existing code
- * 4. Paste this entire file
- * 5. Click "Deploy" → "New deployment"
- * 6. Select type: "Web app"
- * 7. Set "Execute as": Me (your account)
- * 8. Set "Who has access": Anyone
- * 9. Click "Deploy" and authorize when prompted
- * 10. Copy the Web App URL
- *
  * Your Google Sheet must have three sheets (tabs):
- * - "Attendees" with headers: id, name, email, department, position, phone, createdAt
- * - "Records" with headers: id, attendeeId, attendeeName, attendeeEmail, attendeeDepartment, timestamp, type
- * - "AdminPins" with headers: pin, label, active
- *   Example row: 1234 | Main Admin | TRUE
- *   Tip: format the pin column as Plain text to preserve leading zeros.
+ * - "Attendees" (11 columns: id, name, email, department, position, phone, createdAt, willAttend, reason, group, tableNo)
+ * - "Records" (7 columns: id, attendeeId, attendeeName, attendeeEmail, attendeeDepartment, timestamp, type)
+ * - "AdminPins" (pin, label, active, ..., Col J: Event Title, Col K: Header Image URL)
  */
 
 function getSheet(name) {
@@ -116,6 +102,17 @@ function getActivePins() {
   return pins;
 }
 
+// Fetch Event Title (Col J / Row 2) and Header Image URL (Col K / Row 2) from AdminPins tab
+function getEventConfig(sheet) {
+  try {
+    const title = sheet.getRange("J2").getValue() || "";
+    const imageUrl = sheet.getRange("K2").getValue() || "";
+    return { title: String(title), imageUrl: String(imageUrl) };
+  } catch (e) {
+    return { title: "", imageUrl: "" };
+  }
+}
+
 function doGet(e) {
   try {
     const action = e.parameter.action || 'getAll';
@@ -124,11 +121,13 @@ function doGet(e) {
     if (action === 'getAll') {
       const attendeesSheet = getSheet('Attendees');
       const recordsSheet = getSheet('Records');
+      const adminPinsSheet = getSheet('AdminPins');
 
       result = {
         success: true,
         attendees: attendeesSheet ? sheetToObjects(attendeesSheet) : [],
         records: recordsSheet ? sheetToObjects(recordsSheet) : [],
+        eventConfig: adminPinsSheet ? getEventConfig(adminPinsSheet) : { title: '', imageUrl: '' },
       };
     }
 
@@ -156,10 +155,19 @@ function doPost(e) {
 
     let result = { success: true };
 
-    // ─── ATTENDEES ───
-    // In doPost inside Code.gs:
+    // ─── EVENT CONFIG ───
+    if (action === 'updateEventConfig') {
+      const sheet = getSheet('AdminPins');
+      const config = data.eventConfig || {};
 
-    if (action === 'addAttendee') {
+      sheet.getRange("J2").setValue(config.title || "");
+      sheet.getRange("K2").setValue(config.imageUrl || "");
+
+      result.eventConfig = config;
+    }
+
+    // ─── ATTENDEES ───
+    else if (action === 'addAttendee') {
       const sheet = getSheet('Attendees');
       const attendee = data.attendee;
 
@@ -210,6 +218,18 @@ function doPost(e) {
         ]]);
 
         result.attendee = attendee;
+      } else {
+        result.success = false;
+        result.error = 'Attendee not found';
+      }
+    }
+
+    else if (action === 'deleteAttendee') {
+      const sheet = getSheet('Attendees');
+      const rowIndex = findRowById(sheet, data.id);
+      if (rowIndex > 0) {
+        sheet.deleteRow(rowIndex);
+        result.deletedId = data.id;
       } else {
         result.success = false;
         result.error = 'Attendee not found';

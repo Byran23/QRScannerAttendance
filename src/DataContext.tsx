@@ -364,3 +364,42 @@ export function DataProvider({ children }: { children: ReactNode }) {
 export function useData() {
   return useContext(DataContext);
 }
+
+// Inside DataContext.tsx
+
+// Add key for local storage
+const LS_EVENT_CONFIG = 'attendease_event_config';
+
+interface DataContextType {
+  // ... all existing fields ...
+  eventConfig: EventConfig;
+  updateEventConfig: (config: EventConfig) => Promise<void>;
+}
+
+// In DataProvider component:
+const [eventConfig, setEventConfig] = useState<EventConfig>(() => {
+  try {
+    const saved = localStorage.getItem(LS_EVENT_CONFIG);
+    return saved ? JSON.parse(saved) : { title: '', imageUrl: '' };
+  } catch {
+    return { title: '', imageUrl: '' };
+  }
+});
+
+// Update gsGet to fetch event config from Google Sheets
+// (The Gas backend returns eventConfig from AdminPins range J2:K2)
+
+const updateEventConfigFn = useCallback(async (config: EventConfig) => {
+  setEventConfig(config);
+  localStorage.setItem(LS_EVENT_CONFIG, JSON.stringify(config));
+
+  if (synced) {
+    try {
+      await gsPost('updateEventConfig', { eventConfig: config });
+    } catch (err) {
+      console.error('Failed to update event config in Google Sheets', err);
+    }
+  }
+}, [synced]);
+
+// Expose eventConfig & updateEventConfig in DataContext.Provider value
