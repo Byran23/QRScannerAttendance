@@ -125,7 +125,7 @@ export default function QRScanner() {
         )}
       </div>
 
-      {/* Confirmation Modal */}
+      {/* CONFIRM ATTENDANCE MODAL */}
       {pendingScan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-bounce-in">
@@ -140,7 +140,7 @@ export default function QRScanner() {
               <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{pendingScan.attendee.department} · {pendingScan.attendee.position}</p>
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{pendingScan.attendee.email || 'No email'} · {pendingScan.attendee.phone || 'No phone'}</p>
 
-              {/* Group and Table No. display in confirmation modal */}
+              {/* Group & Table No. Badges rendered side by side */}
               {(pendingScan.attendee.group || pendingScan.attendee.tableNo) && (
                 <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
                   {pendingScan.attendee.group && (
