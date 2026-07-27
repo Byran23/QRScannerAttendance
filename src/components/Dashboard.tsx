@@ -41,77 +41,72 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [eventImageInput, setEventImageInput] = useState(eventConfig?.imageUrl || '');
   const [isSavingEvent, setIsSavingEvent] = useState(false);
 
-  // Core Stats Calculations
-  const checkedInToday = new Set(todayRecords.filter(r => r.type === 'check-in').map(r => r.attendeeId));
-  const presentIds = new Set<string>();
-  for (const id of checkedInToday) {
-    const last = todayRecords.find(r => r.attendeeId === id);
-    if (last && last.type === 'check-in') presentIds.add(id);
-  }
-
+  // Core Counts
   const totalAttendees = attendees.length;
-  const presentCount = presentIds.size;
-  const absentCount = totalAttendees - checkedInToday.size;
 
-  // RSVP Stats
-  const willAttendCount = attendees.filter(a => a.willAttend === true || a.willAttend === 'true' || a.willAttend === undefined).length;
-  const willNotAttendCount = attendees.filter(a => a.willAttend === false || a.willAttend === 'false' || a.willAttend === 'Will Not Attend').length;
+  // RSVP Counts
+  const willAttendList = attendees.filter(a => a.willAttend === true || a.willAttend === 'true' || a.willAttend === undefined || String(a.willAttend).toLowerCase().trim() === 'will attend');
+  const willAttendCount = willAttendList.length;
 
-  // ─── Revised Status Bar Ratio Logic ───
+  const willNotAttendList = attendees.filter(a => a.willAttend === false || a.willAttend === 'false' || String(a.willAttend).toLowerCase().trim() === 'will not attend');
+  const willNotAttendCount = willNotAttendList.length;
+
+  // Ratios & Percentages for Total Card
+  const willAttendPct = totalAttendees > 0 ? Math.round((willAttendCount / totalAttendees) * 100) : 0;
+  const willNotAttendPct = totalAttendees > 0 ? Math.round((willNotAttendCount / totalAttendees) * 100) : 0;
+
+  // Present & Absent strictly based on WILL ATTEND count
+  const checkedInToday = new Set(todayRecords.filter(r => r.type === 'check-in').map(r => r.attendeeId));
+  
+  // Count present attendees who are in the "Will Attend" list
+  const presentCount = willAttendList.filter(a => checkedInToday.has(a.id)).length;
+  // Absent is strictly from the Will Attend pool
+  const absentCount = Math.max(0, willAttendCount - presentCount);
+
+  // Dynamic Status Bar Calculations
   const getFilteredCountAndLabel = () => {
     switch (selectedFilter) {
-      case 'all': {
-        // Total Registered -> Ratio of (Will Attend / Will Not Attend)
-        const totalRsvp = willAttendCount + willNotAttendCount;
-        const pct = totalRsvp > 0 ? Math.round((willAttendCount / totalRsvp) * 100) : 0;
+      case 'will-attend':
         return {
-          label: 'Registration Confirmation Ratio (Will Attend vs. Will Not Attend)',
-          subText: `${willAttendCount} confirmed "Will Attend" out of ${totalRsvp} total RSVPs (${willNotAttendCount} declined)`,
-          pct,
-          colorClass: 'from-blue-500 to-indigo-600'
+          count: willAttendCount,
+          totalBenchmark: totalAttendees,
+          label: 'Will Attend Rate',
+          pct: totalAttendees > 0 ? Math.round((willAttendCount / totalAttendees) * 100) : 0,
+          colorClass: 'from-emerald-500 to-teal-500'
         };
-      }
-
-      case 'will-attend': {
-        // Will Attend -> Ratio of Present / Will Attend
-        const pct = willAttendCount > 0 ? Math.round((presentCount / willAttendCount) * 100) : 0;
+      case 'will-not-attend':
         return {
-          label: 'Turnout Rate (Present vs. Confirmed Will Attend)',
-          subText: `${presentCount} present today out of ${willAttendCount} expected attendees`,
-          pct,
-          colorClass: 'from-emerald-500 to-teal-600'
+          count: willNotAttendCount,
+          totalBenchmark: totalAttendees,
+          label: 'Will Not Attend Rate',
+          pct: totalAttendees > 0 ? Math.round((willNotAttendCount / totalAttendees) * 100) : 0,
+          colorClass: 'from-rose-500 to-red-500'
         };
-      }
-
-      case 'will-not-attend': {
-        const pct = totalAttendees > 0 ? Math.round((willNotAttendCount / totalAttendees) * 100) : 0;
+      case 'present':
         return {
-          label: 'Declined Attendance Ratio',
-          subText: `${willNotAttendCount} of ${totalAttendees} total registered declined to attend`,
-          pct,
-          colorClass: 'from-rose-500 to-red-600'
+          count: presentCount,
+          totalBenchmark: willAttendCount,
+          label: 'Turnout Rate (Present vs. Will Attend)',
+          pct: willAttendCount > 0 ? Math.round((presentCount / willAttendCount) * 100) : 0,
+          colorClass: 'from-green-500 to-emerald-500'
         };
-      }
-
-      case 'present': {
-        const pct = totalAttendees > 0 ? Math.round((presentCount / totalAttendees) * 100) : 0;
+      case 'absent':
         return {
-          label: 'Overall Present Ratio',
-          subText: `${presentCount} of ${totalAttendees} total registered present right now`,
-          pct,
-          colorClass: 'from-green-500 to-emerald-600'
+          count: absentCount,
+          totalBenchmark: willAttendCount,
+          label: 'Absence Rate (Absent vs. Will Attend)',
+          pct: willAttendCount > 0 ? Math.round((absentCount / willAttendCount) * 100) : 0,
+          colorClass: 'from-orange-500 to-amber-500'
         };
-      }
-
-      case 'absent': {
-        const pct = totalAttendees > 0 ? Math.round((absentCount / totalAttendees) * 100) : 0;
+      case 'all':
+      default:
         return {
-          label: 'Overall Absent Ratio',
-          subText: `${absentCount} of ${totalAttendees} total registered have not checked in`,
-          pct,
-          colorClass: 'from-orange-500 to-amber-600'
+          count: willAttendCount,
+          totalBenchmark: totalAttendees,
+          label: 'RSVP Ratio (Will Attend vs Registered)',
+          pct: willAttendPct,
+          colorClass: 'from-blue-500 to-orange-500'
         };
-      }
     }
   };
 
@@ -259,9 +254,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       )}
 
-      {/* ─── Interactive Stat Cards Grid ─── */}
+      {/* ─── Stat Cards Grid ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {/* Total Registered */}
+        {/* Total Registered (Shows Ratio & Percentages of Will / Will Not) */}
         <div 
           onClick={() => setSelectedFilter('all')}
           className={`col-span-2 sm:col-span-1 rounded-2xl p-4 shadow-sm transition-all cursor-pointer border ${
@@ -270,9 +265,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-900/80'
           }`}
         >
-          <Users size={20} className="mb-2" />
+          <Users size={20} className="mb-1" />
           <p className="text-2xl font-bold">{totalAttendees}</p>
-          <p className="text-xs opacity-80 font-medium">Total Registered</p>
+          <p className="text-xs opacity-90 font-semibold truncate mt-0.5">
+            {willAttendCount} : {willNotAttendCount} ({willAttendPct}% / {willNotAttendPct}%)
+          </p>
+          <p className="text-[11px] opacity-75 font-medium mt-0.5">Total Registered</p>
         </div>
 
         {/* Will Attend (RSVP Yes) */}
@@ -286,7 +284,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         >
           <UserCheck2 size={20} className="mb-2" />
           <p className="text-2xl font-bold">{willAttendCount}</p>
-          <p className="text-xs opacity-80 font-medium">Will Attend</p>
+          <p className="text-xs opacity-80 font-medium">Will Attend ({willAttendPct}%)</p>
         </div>
 
         {/* Will Not Attend (RSVP No) */}
@@ -300,10 +298,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         >
           <UserX2 size={20} className="mb-2" />
           <p className="text-2xl font-bold">{willNotAttendCount}</p>
-          <p className="text-xs opacity-80 font-medium">Will Not Attend</p>
+          <p className="text-xs opacity-80 font-medium">Will Not Attend ({willNotAttendPct}%)</p>
         </div>
 
-        {/* Present Today */}
+        {/* Present Today (Relative to Will Attend) */}
         <div 
           onClick={() => setSelectedFilter('present')}
           className={`rounded-2xl p-4 shadow-sm transition-all cursor-pointer border ${
@@ -314,10 +312,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         >
           <UserCheck size={20} className="mb-2" />
           <p className="text-2xl font-bold">{presentCount}</p>
-          <p className="text-xs opacity-80 font-medium">Present</p>
+          <p className="text-xs opacity-80 font-medium">Present ({willAttendCount > 0 ? Math.round((presentCount / willAttendCount) * 100) : 0}% of Will)</p>
         </div>
 
-        {/* Absent Today */}
+        {/* Absent Today (Relative to Will Attend) */}
         <div 
           onClick={() => setSelectedFilter('absent')}
           className={`rounded-2xl p-4 shadow-sm transition-all cursor-pointer border ${
@@ -328,7 +326,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         >
           <UserX size={20} className="mb-2" />
           <p className="text-2xl font-bold">{absentCount}</p>
-          <p className="text-xs opacity-80 font-medium">Absent</p>
+          <p className="text-xs opacity-80 font-medium">Absent ({willAttendCount > 0 ? Math.round((absentCount / willAttendCount) * 100) : 0}% of Will)</p>
         </div>
       </div>
 
@@ -362,7 +360,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
 
         <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
-          {activeBarData.subText}
+          {activeBarData.count} of {activeBarData.totalBenchmark} ({activeBarData.pct}%)
         </p>
       </div>
 
