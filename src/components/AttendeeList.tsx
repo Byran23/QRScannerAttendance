@@ -76,7 +76,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return true;
   };
 
-  // Dynamic dropdown option lists
+  // Dynamic filter dropdown lists
   const departments = [...new Set(attendees.map(a => a.department).filter(Boolean))];
   const groups = [...new Set(attendees.map(a => a.group).filter(Boolean))];
   const tables = [...new Set(attendees.map(a => a.tableNo).filter(Boolean))];
@@ -190,7 +190,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
       {/* Filters Bar */}
       <div className="space-y-3">
-        {/* Attendance Status Tabs */}
         <div className="flex bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit">
           <button
             onClick={() => setFilterAttendance('all')}
@@ -224,9 +223,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
           </button>
         </div>
 
-        {/* Filter & Search Dropdowns Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-          {/* Search Box */}
           <div className="relative sm:col-span-12 md:col-span-4">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <input 
@@ -238,7 +235,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             />
           </div>
 
-          {/* Department Filter */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -251,7 +247,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Group Filter */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <Users2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -264,7 +259,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Table No. Filter */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <LayoutGrid size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -277,7 +271,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Sort Dropdown */}
           <div className="relative sm:col-span-12 md:col-span-2">
             <ArrowUpDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -318,77 +311,79 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                     : 'border-gray-100 dark:border-slate-800 hover:shadow-md'
                 }`}
               >
-                <div className="flex items-start gap-4">
-                  {/* Initials Avatar */}
-                  <div className={`w-12 h-12 rounded-full ${getInitialsBg(attendee.name)} flex items-center justify-center text-white text-lg font-bold shrink-0 mt-0.5`}>
-                    {getInitials(attendee.name)}
-                  </div>
+                <div className="flex items-start justify-between gap-4">
+                  {/* Left Column: Avatar + Details */}
+                  <div className="flex items-start gap-4 min-w-0 flex-1">
+                    <div className={`w-12 h-12 rounded-full ${getInitialsBg(attendee.name)} flex items-center justify-center text-white text-lg font-bold shrink-0 mt-0.5`}>
+                      {getInitials(attendee.name)}
+                    </div>
 
-                  {/* Main Details Area */}
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(attendee.id)}>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(attendee.id)}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
 
-                      {/* Attendance Intention Badge */}
-                      <div className="relative inline-block">
-                        <span 
-                          onClick={(e) => {
-                            if (!isAttending) {
-                              e.stopPropagation();
-                              setActiveReasonTooltip(prev => prev === attendee.id ? null : attendee.id);
-                            }
-                          }}
-                          onMouseEnter={() => {
-                            if (!isAttending) setActiveReasonTooltip(attendee.id);
-                          }}
-                          onMouseLeave={() => {
-                            if (!isAttending) setActiveReasonTooltip(null);
-                          }}
-                          className={`text-xs px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-transform active:scale-95 ${
-                            isAttending 
-                              ? 'bg-green-100 dark:bg-green-950/80 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800' 
-                              : 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
-                          }`}
-                        >
-                          {isAttending ? <CheckCircle2 size={13} className="shrink-0" /> : <XCircle size={13} className="shrink-0" />}
-                          {isAttending ? 'Will Attend' : 'Will Not Attend'}
-                          {!isAttending && <AlertCircle size={12} className="ml-0.5 text-red-500 animate-pulse shrink-0" />}
-                        </span>
+                        {/* Attendance Intention Badge */}
+                        <div className="relative inline-block">
+                          <span 
+                            onClick={(e) => {
+                              if (!isAttending) {
+                                e.stopPropagation();
+                                setActiveReasonTooltip(prev => prev === attendee.id ? null : attendee.id);
+                              }
+                            }}
+                            onMouseEnter={() => {
+                              if (!isAttending) setActiveReasonTooltip(attendee.id);
+                            }}
+                            onMouseLeave={() => {
+                              if (!isAttending) setActiveReasonTooltip(null);
+                            }}
+                            className={`text-xs px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-transform active:scale-95 ${
+                              isAttending 
+                                ? 'bg-green-100 dark:bg-green-950/80 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800' 
+                                : 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
+                            }`}
+                          >
+                            {isAttending ? <CheckCircle2 size={13} className="shrink-0" /> : <XCircle size={13} className="shrink-0" />}
+                            {isAttending ? 'Will Attend' : 'Will Not Attend'}
+                            {!isAttending && <AlertCircle size={12} className="ml-0.5 text-red-500 animate-pulse shrink-0" />}
+                          </span>
 
-                        {/* Tooltip Reason */}
-                        {!isAttending && isTooltipOpen && (
-                          <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-xs rounded-xl shadow-xl border border-slate-700 z-50 animate-fade-in">
-                            <div className="flex items-center gap-1.5 text-red-400 font-semibold mb-1 uppercase text-[10px] tracking-wider">
-                              <AlertCircle size={13} /> Reason For Non-Attendance
+                          {/* Tooltip Reason */}
+                          {!isAttending && isTooltipOpen && (
+                            <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-xs rounded-xl shadow-xl border border-slate-700 z-50 animate-fade-in">
+                              <div className="flex items-center gap-1.5 text-red-400 font-semibold mb-1 uppercase text-[10px] tracking-wider">
+                                <AlertCircle size={13} /> Reason For Non-Attendance
+                              </div>
+                              <p className="italic text-slate-200 font-normal">
+                                {attendee.reason ? `"${attendee.reason}"` : 'No specific reason provided.'}
+                              </p>
+                              <div className="absolute left-4 top-full w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-slate-900 dark:border-t-slate-800"></div>
                             </div>
-                            <p className="italic text-slate-200 font-normal">
-                              {attendee.reason ? `"${attendee.reason}"` : 'No specific reason provided.'}
-                            </p>
-                            <div className="absolute left-4 top-full w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-slate-900 dark:border-t-slate-800"></div>
-                          </div>
+                          )}
+                        </div>
+
+                        {/* Live Status */}
+                        {isAttending && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            status === 'present' 
+                              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
+                              : status === 'checked-out' 
+                              ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800' 
+                              : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
+                          }`}>
+                            {status === 'present' ? 'Present' : status === 'checked-out' ? 'Left' : 'Absent'}
+                          </span>
                         )}
                       </div>
 
-                      {/* Live Scan Status */}
-                      {isAttending && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          status === 'present' 
-                            ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
-                            : status === 'checked-out' 
-                            ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800' 
-                            : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
-                        }`}>
-                          {status === 'present' ? 'Present' : status === 'checked-out' ? 'Left' : 'Absent'}
-                        </span>
-                      )}
+                      <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 truncate">{attendee.department} · {attendee.position}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">{attendee.email || 'No email'} · {attendee.phone || 'No phone'}</p>
                     </div>
-
-                    <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 truncate">{attendee.department} · {attendee.position}</p>
-                    <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">{attendee.email || 'No email'} · {attendee.phone || 'No phone'}</p>
                   </div>
 
-                  {/* Actions Column + Placed Group & Table Info Directly Below Icons */}
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  {/* Right Column: Icons on Top + Group/Table Badges Side-by-Side Below */}
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    {/* Action Icons Row */}
                     <div className="flex items-center gap-1">
                       <button 
                         onClick={() => toggleExpand(attendee.id)} 
@@ -398,7 +393,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                       </button>
                       
-                      {/* QR Code Button strictly hidden for Non-Attendees */}
+                      {/* QR Code Button STRICTLY Hidden for Non-Attendees */}
                       {isAttending && (
                         <button 
                           onClick={() => onNavigate('qr-view', attendee)} 
@@ -413,20 +408,19 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       <button onClick={() => setShowDeleteConfirm(attendee.id)} className="p-2 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-lg text-orange-500 dark:text-orange-400 transition-colors" title="Delete"><Trash2 size={18} /></button>
                     </div>
 
-                    {/* Group & Table No. Placed Directly Under Action Icons */}
-                    {(attendee.tableNo || attendee.group) && (
-                      <div className="flex flex-col items-end gap-1 mt-0.5">
-                        {attendee.tableNo && (
-                          <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/90 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80 shadow-sm flex items-center gap-1">
-                            <LayoutGrid size={11} className="shrink-0 text-amber-600 dark:text-amber-400" />
-                            {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
+                    {/* Group & Table No. Badges Side-by-Side directly below action icons */}
+                    {(attendee.group || attendee.tableNo) && (
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        {attendee.group && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-medium text-[11px] border border-blue-200 dark:border-blue-800 shadow-2xs">
+                            <Users2 size={11} className="text-blue-600 dark:text-blue-400" />
+                            {attendee.group}
                           </span>
                         )}
-
-                        {attendee.group && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900 flex items-center gap-1">
-                            <Users2 size={10} className="shrink-0" />
-                            {attendee.group}
+                        {attendee.tableNo && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 font-bold text-[11px] border border-amber-300 dark:border-amber-700/80 shadow-2xs">
+                            <LayoutGrid size={11} className="text-amber-600 dark:text-amber-400" />
+                            {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
                           </span>
                         )}
                       </div>
@@ -439,14 +433,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                   <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
                       <div>
-                        <span className="font-medium text-gray-700 dark:text-slate-300">Group Name: </span>
-                        {attendee.group || 'N/A'}
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700 dark:text-slate-300">Assigned Table: </span>
-                        {attendee.tableNo || 'N/A'}
-                      </div>
-                      <div>
                         <span className="font-medium text-gray-700 dark:text-slate-300">Registration Date: </span>
                         {attendee.createdAt ? new Date(attendee.createdAt).toLocaleString() : 'N/A'}
                       </div>
@@ -456,7 +442,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       </div>
                     </div>
 
-                    {/* Check In Button rendered inside expanded section strictly for attending users */}
+                    {/* Check In Button rendered inside expanded section STRICTLY for attending users */}
                     {isAttending && (
                       <button
                         onClick={() => handleCheckIn(attendee)}
