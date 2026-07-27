@@ -81,6 +81,7 @@ async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceReco
   const data = await res.json();
   if (!data.success) throw new Error(data.error || 'Failed to fetch');
 
+  // Inside gsGet() mapping in DataContext.tsx:
   const parsedAttendees: Attendee[] = (data.attendees || []).map((a: any) => ({
     id: String(a.id || ''),
     name: String(a.name || ''),
@@ -91,6 +92,8 @@ async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceReco
     createdAt: String(a.createdAt || ''),
     willAttend: parseWillAttend(a.willAttend),
     reason: String(a.reason || ''),
+    group: String(a.group || ''),
+    tableNo: String(a.tableNo || ''),
   }));
 
   return {

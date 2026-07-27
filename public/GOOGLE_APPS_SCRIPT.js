@@ -157,9 +157,16 @@ function doPost(e) {
     let result = { success: true };
 
     // ─── ATTENDEES ───
+    // In doPost inside Code.gs:
+
     if (action === 'addAttendee') {
       const sheet = getSheet('Attendees');
       const attendee = data.attendee;
+
+      const isAttending = attendee.willAttend === true || attendee.willAttend === 'yes' || attendee.willAttend === 'true';
+      const attendanceStatus = isAttending ? 'Will Attend' : 'Will Not Attend';
+      const attendanceReason = !isAttending ? (attendee.reason || '') : '';
+
       sheet.appendRow([
         attendee.id,
         attendee.name,
@@ -168,7 +175,12 @@ function doPost(e) {
         attendee.position,
         attendee.phone || '',
         attendee.createdAt,
+        attendanceStatus,       // Column H
+        attendanceReason,       // Column I
+        attendee.group || '',   // Column J
+        attendee.tableNo || '', // Column K
       ]);
+
       result.attendee = attendee;
     }
 
@@ -178,7 +190,12 @@ function doPost(e) {
       const rowIndex = findRowById(sheet, attendee.id);
 
       if (rowIndex > 0) {
-        sheet.getRange(rowIndex, 1, 1, 7).setValues([[
+        const isAttending = attendee.willAttend === true || attendee.willAttend === 'yes' || attendee.willAttend === 'true';
+        const attendanceStatus = isAttending ? 'Will Attend' : 'Will Not Attend';
+        const attendanceReason = !isAttending ? (attendee.reason || '') : '';
+
+        // Set 11 columns (A to K)
+        sheet.getRange(rowIndex, 1, 1, 11).setValues([[
           attendee.id,
           attendee.name,
           attendee.email,
@@ -186,20 +203,13 @@ function doPost(e) {
           attendee.position,
           attendee.phone || '',
           attendee.createdAt,
+          attendanceStatus,       // Column H
+          attendanceReason,       // Column I
+          attendee.group || '',   // Column J
+          attendee.tableNo || '', // Column K
         ]]);
+
         result.attendee = attendee;
-      } else {
-        result.success = false;
-        result.error = 'Attendee not found';
-      }
-    }
-
-    else if (action === 'deleteAttendee') {
-      const sheet = getSheet('Attendees');
-      const rowIndex = findRowById(sheet, data.id);
-
-      if (rowIndex > 0) {
-        sheet.deleteRow(rowIndex);
       } else {
         result.success = false;
         result.error = 'Attendee not found';

@@ -6,6 +6,10 @@ export interface Attendee {
   position: string;
   phone: string;
   createdAt: string;
+  willAttend?: boolean | string; // Column H in Google Sheets
+  reason?: string;               // Column I in Google Sheets
+  group?: string;                // Column J in Google Sheets
+  tableNo?: string;              // Column K in Google Sheets
 }
 
 export interface AttendanceRecord {
