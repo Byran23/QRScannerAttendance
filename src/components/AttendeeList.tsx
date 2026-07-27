@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid, X } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -11,7 +11,7 @@ interface AttendeeListProps {
 type SortOption = 'name-asc' | 'name-desc' | 'office-asc' | 'date-desc' | 'date-asc';
 
 export default function AttendeeList({ onNavigate }: AttendeeListProps) {
-  const { attendees, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
+  const { attendees, updateAttendee, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
   const [filterGroup, setFilterGroup] = useState('all');
@@ -22,6 +22,11 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const [expandedAttendeeId, setExpandedAttendeeId] = useState<string | null>(null);
   const [activeReasonTooltip, setActiveReasonTooltip] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  // Quick RSVP Editing Modal State
+  const [editingRsvpAttendee, setEditingRsvpAttendee] = useState<Attendee | null>(null);
+  const [rsvpWillAttend, setRsvpWillAttend] = useState<boolean>(true);
+  const [rsvpReason, setRsvpReason] = useState<string>('');
 
   const registrationLink = `${window.location.origin}${window.location.pathname}#register`;
 
@@ -76,24 +81,38 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return true;
   };
 
-  // ─── Sorted Filter Dropdown Lists ───
+  // Open Quick Edit Modal
+  const openRsvpModal = (attendee: Attendee, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingRsvpAttendee(attendee);
+    const isAttending = checkWillAttend(attendee);
+    setRsvpWillAttend(isAttending);
+    setRsvpReason(attendee.reason || '');
+  };
 
-  // Departments (Alphabetical A-Z)
+  // Save RSVP Updates
+  const handleSaveRsvp = async () => {
+    if (!editingRsvpAttendee) return;
+    await updateAttendee({
+      ...editingRsvpAttendee,
+      willAttend: rsvpWillAttend,
+      reason: rsvpWillAttend ? '' : rsvpReason,
+    });
+    setEditingRsvpAttendee(null);
+  };
+
+  // Dynamic filter lists
   const departments = [...new Set(attendees.map(a => a.department).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
-  // Groups (Alphabetical A-Z)
   const groups = [...new Set(attendees.map(a => a.group).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
-  // Table Numbers (Lowest to Highest Numerically)
   const tables = [...new Set(attendees.map(a => a.tableNo).filter(Boolean))]
     .sort((a, b) => {
       const numA = parseInt(a.replace(/\D/g, ''), 10);
       const numB = parseInt(b.replace(/\D/g, ''), 10);
-      if (!isNaN(numA) && !isNaN(numB)) {
-        return numA - numB;
-      }
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
       return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
     });
 
@@ -280,7 +299,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Table No. Filter (Sorted Lowest to Highest) */}
+          {/* Table No. Filter (Lowest to Highest) */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <LayoutGrid size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -310,6 +329,80 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
           </div>
         </div>
       </div>
+
+      {/* Quick RSVP Edit Modal */}
+      {editingRsvpAttendee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden p-6 space-y-4 animate-bounce-in">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-gray-800 dark:text-white text-sm">Update Attendance Intention</h3>
+              <button onClick={() => setEditingRsvpAttendee(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div>
+              <p className="font-semibold text-gray-800 dark:text-white text-base">{editingRsvpAttendee.name}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">{editingRsvpAttendee.department} · {editingRsvpAttendee.position}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setRsvpWillAttend(true)}
+                className={`py-2.5 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all border ${
+                  rsvpWillAttend
+                    ? 'bg-green-600 text-white border-green-600 shadow-md'
+                    : 'bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700'
+                }`}
+              >
+                <CheckCircle2 size={16} /> Will Attend
+              </button>
+              <button
+                type="button"
+                onClick={() => setRsvpWillAttend(false)}
+                className={`py-2.5 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all border ${
+                  !rsvpWillAttend
+                    ? 'bg-red-600 text-white border-red-600 shadow-md'
+                    : 'bg-gray-50 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700'
+                }`}
+              >
+                <XCircle size={16} /> Will Not Attend
+              </button>
+            </div>
+
+            {!rsvpWillAttend && (
+              <div className="animate-fade-in">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">
+                  Reason for Non-Attendance
+                </label>
+                <textarea
+                  value={rsvpReason}
+                  onChange={e => setRsvpReason(e.target.value)}
+                  placeholder="Enter reason..."
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-xs dark:text-white"
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-slate-800">
+              <button
+                onClick={() => setEditingRsvpAttendee(null)}
+                className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveRsvp}
+                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm"
+              >
+                Save Status
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {sorted.length === 0 ? (
         <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800">
@@ -344,29 +437,26 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
 
-                      {/* Attendance Intention Badge */}
+                      {/* Interactive Attendance Intention Badge */}
                       <div className="relative inline-block">
                         <span 
-                          onClick={(e) => {
-                            if (!isAttending) {
-                              e.stopPropagation();
-                              setActiveReasonTooltip(prev => prev === attendee.id ? null : attendee.id);
-                            }
-                          }}
+                          onClick={(e) => openRsvpModal(attendee, e)}
                           onMouseEnter={() => {
                             if (!isAttending) setActiveReasonTooltip(attendee.id);
                           }}
                           onMouseLeave={() => {
                             if (!isAttending) setActiveReasonTooltip(null);
                           }}
-                          className={`text-xs px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-transform active:scale-95 ${
+                          className={`text-xs px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-transform active:scale-95 group/badge ${
                             isAttending 
-                              ? 'bg-green-100 dark:bg-green-950/80 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800' 
-                              : 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
+                              ? 'bg-green-100 dark:bg-green-950/80 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800 hover:bg-green-200' 
+                              : 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-200'
                           }`}
+                          title="Click to change attendance status"
                         >
                           {isAttending ? <CheckCircle2 size={13} className="shrink-0" /> : <XCircle size={13} className="shrink-0" />}
                           {isAttending ? 'Will Attend' : 'Will Not Attend'}
+                          <Edit size={10} className="ml-0.5 opacity-60 group-hover/badge:opacity-100 shrink-0" />
                           {!isAttending && <AlertCircle size={12} className="ml-0.5 text-red-500 animate-pulse shrink-0" />}
                         </span>
 
@@ -427,7 +517,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                         </button>
                       )}
 
-                      <button onClick={() => onNavigate('edit-attendee', attendee)} className="p-2 hover:bg-sky-50 dark:hover:bg-sky-950 rounded-lg text-sky-600 dark:text-sky-400 transition-colors" title="Edit"><Edit size={18} /></button>
+                      <button onClick={() => onNavigate('edit-attendee', attendee)} className="p-2 hover:bg-sky-50 dark:hover:bg-sky-950 rounded-lg text-sky-600 dark:text-sky-400 transition-colors" title="Edit Profile"><Edit size={18} /></button>
                       <button onClick={() => setShowDeleteConfirm(attendee.id)} className="p-2 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-lg text-orange-500 dark:text-orange-400 transition-colors" title="Delete"><Trash2 size={18} /></button>
                     </div>
 
