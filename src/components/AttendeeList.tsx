@@ -76,7 +76,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return true;
   };
 
-  // Dynamic filter dropdown lists
+  // Dynamic dropdown option lists
   const departments = [...new Set(attendees.map(a => a.department).filter(Boolean))];
   const groups = [...new Set(attendees.map(a => a.group).filter(Boolean))];
   const tables = [...new Set(attendees.map(a => a.tableNo).filter(Boolean))];
@@ -319,21 +319,15 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                 }`}
               >
                 <div className="flex items-start gap-4">
+                  {/* Initials Avatar */}
                   <div className={`w-12 h-12 rounded-full ${getInitialsBg(attendee.name)} flex items-center justify-center text-white text-lg font-bold shrink-0 mt-0.5`}>
                     {getInitials(attendee.name)}
                   </div>
 
+                  {/* Main Details Area */}
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(attendee.id)}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
-
-                      {/* Prominent High-Visibility Table Badge */}
-                      {attendee.tableNo && (
-                        <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/90 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80 shadow-sm flex items-center gap-1">
-                          <LayoutGrid size={12} className="shrink-0 text-amber-600 dark:text-amber-400" />
-                          {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
-                        </span>
-                      )}
 
                       {/* Attendance Intention Badge */}
                       <div className="relative inline-block">
@@ -375,7 +369,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                         )}
                       </div>
 
-                      {/* Live Status */}
+                      {/* Live Scan Status */}
                       {isAttending && (
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           status === 'present' 
@@ -389,46 +383,60 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       )}
                     </div>
 
-                    <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 truncate flex items-center gap-1.5">
-                      <span>{attendee.department} · {attendee.position}</span>
-                      {attendee.group && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-medium text-[11px] border border-blue-100 dark:border-blue-900">
-                          <Users2 size={11} /> {attendee.group}
-                        </span>
-                      )}
-                    </p>
+                    <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 truncate">{attendee.department} · {attendee.position}</p>
                     <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">{attendee.email || 'No email'} · {attendee.phone || 'No phone'}</p>
                   </div>
 
-                  {/* Actions Column */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button 
-                      onClick={() => toggleExpand(attendee.id)} 
-                      className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 transition-colors" 
-                      title={isExpanded ? "Collapse" : "Expand"}
-                    >
-                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
-                    
-                    {/* QR Code Button STRICTLY Hidden for Non-Attendees */}
-                    {isAttending && (
+                  {/* Actions Column + Placed Group & Table Info Directly Below Icons */}
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1">
                       <button 
-                        onClick={() => onNavigate('qr-view', attendee)} 
-                        className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg text-blue-600 dark:text-blue-400 transition-colors" 
-                        title="View QR Code"
+                        onClick={() => toggleExpand(attendee.id)} 
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 transition-colors" 
+                        title={isExpanded ? "Collapse" : "Expand"}
                       >
-                        <QrCode size={18} />
+                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                       </button>
-                    )}
+                      
+                      {/* QR Code Button strictly hidden for Non-Attendees */}
+                      {isAttending && (
+                        <button 
+                          onClick={() => onNavigate('qr-view', attendee)} 
+                          className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg text-blue-600 dark:text-blue-400 transition-colors" 
+                          title="View QR Code"
+                        >
+                          <QrCode size={18} />
+                        </button>
+                      )}
 
-                    <button onClick={() => onNavigate('edit-attendee', attendee)} className="p-2 hover:bg-sky-50 dark:hover:bg-sky-950 rounded-lg text-sky-600 dark:text-sky-400 transition-colors" title="Edit"><Edit size={18} /></button>
-                    <button onClick={() => setShowDeleteConfirm(attendee.id)} className="p-2 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-lg text-orange-500 dark:text-orange-400 transition-colors" title="Delete"><Trash2 size={18} /></button>
+                      <button onClick={() => onNavigate('edit-attendee', attendee)} className="p-2 hover:bg-sky-50 dark:hover:bg-sky-950 rounded-lg text-sky-600 dark:text-sky-400 transition-colors" title="Edit"><Edit size={18} /></button>
+                      <button onClick={() => setShowDeleteConfirm(attendee.id)} className="p-2 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-lg text-orange-500 dark:text-orange-400 transition-colors" title="Delete"><Trash2 size={18} /></button>
+                    </div>
+
+                    {/* Group & Table No. Placed Directly Under Action Icons */}
+                    {(attendee.tableNo || attendee.group) && (
+                      <div className="flex flex-col items-end gap-1 mt-0.5">
+                        {attendee.tableNo && (
+                          <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/90 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80 shadow-sm flex items-center gap-1">
+                            <LayoutGrid size={11} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                            {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
+                          </span>
+                        )}
+
+                        {attendee.group && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900 flex items-center gap-1">
+                            <Users2 size={10} className="shrink-0" />
+                            {attendee.group}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Expanded Details */}
                 {isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
                       <div>
                         <span className="font-medium text-gray-700 dark:text-slate-300">Group Name: </span>
