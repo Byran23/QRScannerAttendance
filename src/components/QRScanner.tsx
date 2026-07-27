@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Camera, CameraOff, CheckCircle, XCircle, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Camera, CameraOff, CheckCircle, XCircle, AlertTriangle, RotateCcw, Users2, LayoutGrid } from 'lucide-react';
 import { Attendee, AttendanceRecord } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -114,7 +114,6 @@ export default function QRScanner() {
           </div>
         )}
 
-
         {scanFeedback && !pendingScan && (
           <div className={`mx-4 mb-4 rounded-xl p-4 flex items-center gap-3 animate-bounce-in ${scanFeedback.type === 'success' ? 'bg-green-50 dark:bg-green-950/50' : scanFeedback.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-950/50' : 'bg-orange-50 dark:bg-orange-950/50'}`}>
             {scanFeedback.type === 'success' ? <CheckCircle size={22} className="text-green-600 dark:text-green-400 shrink-0" /> : scanFeedback.type === 'warning' ? <AlertTriangle size={22} className="text-yellow-600 dark:text-yellow-400 shrink-0" /> : <XCircle size={22} className="text-orange-600 dark:text-orange-400 shrink-0" />}
@@ -126,21 +125,46 @@ export default function QRScanner() {
         )}
       </div>
 
+      {/* Confirmation Modal */}
       {pendingScan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-bounce-in">
             <div className="p-6 text-center">
               <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-3">Confirm Attendance</p>
+              
               <div className={`w-16 h-16 rounded-full ${getInitialsBg(pendingScan.attendee.name)} flex items-center justify-center text-white text-xl font-bold mx-auto mb-3`}>
                 {getInitials(pendingScan.attendee.name)}
               </div>
+              
               <h3 className="text-lg font-bold text-gray-800 dark:text-white">{pendingScan.attendee.name}</h3>
               <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{pendingScan.attendee.department} · {pendingScan.attendee.position}</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{pendingScan.attendee.email} · {pendingScan.attendee.phone || 'No phone'}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{pendingScan.attendee.email || 'No email'} · {pendingScan.attendee.phone || 'No phone'}</p>
+
+              {/* Group and Table No. display in confirmation modal */}
+              {(pendingScan.attendee.group || pendingScan.attendee.tableNo) && (
+                <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+                  {pendingScan.attendee.group && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-xs border border-blue-200 dark:border-blue-900">
+                      <Users2 size={12} className="text-blue-600 dark:text-blue-400" />
+                      {pendingScan.attendee.group}
+                    </span>
+                  )}
+
+                  {pendingScan.attendee.tableNo && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 font-bold text-xs border border-amber-300 dark:border-amber-700/80 shadow-sm">
+                      <LayoutGrid size={12} className="text-amber-600 dark:text-amber-400" />
+                      {pendingScan.attendee.tableNo.toLowerCase().includes('table') ? pendingScan.attendee.tableNo : `Table ${pendingScan.attendee.tableNo}`}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold ${pendingScan.actionType === 'check-in' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400' : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400'}`}>
                 {pendingScan.actionType === 'check-in' ? '↓ Check In' : '↑ Check Out'}
               </div>
+
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+
               <div className="flex gap-3 mt-5">
                 <button onClick={cancelScan} className="flex-1 px-4 py-2.5 rounded-xl font-medium text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 transition-all">Cancel</button>
                 <button onClick={confirmScan} className={`flex-1 px-4 py-2.5 rounded-xl font-medium text-white transition-all shadow-lg ${pendingScan.actionType === 'check-in' ? 'bg-green-600 hover:bg-green-700 shadow-green-200 dark:shadow-green-900/30' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-200 dark:shadow-orange-900/30'}`}>
