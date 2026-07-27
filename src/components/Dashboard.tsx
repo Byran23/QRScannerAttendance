@@ -12,7 +12,8 @@ import {
   Save, 
   X,
   UserCheck2,
-  UserX2
+  UserX2,
+  RotateCcw
 } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
@@ -23,11 +24,16 @@ interface DashboardProps {
   onNavigate: (page: Page) => void;
 }
 
+type CardFilterType = 'all' | 'will-attend' | 'will-not-attend' | 'present' | 'absent';
+
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const { attendees, todayRecords, addRecord, getAttendeeLastAction, eventConfig, updateEventConfig } = useData();
 
   const [pendingScan, setPendingScan] = useState<{ attendee: Attendee; actionType: 'check-in' | 'check-out' } | null>(null);
   const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error' | 'warning'; message: string; detail?: string } | null>(null);
+  
+  // Card Filter Selection State
+  const [selectedFilter, setSelectedFilter] = useState<CardFilterType>('all');
 
   // Event Config Edit Modal / Inline State
   const [isEditingEvent, setIsEditingEvent] = useState(false);
@@ -35,7 +41,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [eventImageInput, setEventImageInput] = useState(eventConfig?.imageUrl || '');
   const [isSavingEvent, setIsSavingEvent] = useState(false);
 
-  // Stats Calculations
+  // Core Stats Calculations
   const checkedInToday = new Set(todayRecords.filter(r => r.type === 'check-in').map(r => r.attendeeId));
   const presentIds = new Set<string>();
   for (const id of checkedInToday) {
@@ -50,6 +56,50 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   // RSVP Stats
   const willAttendCount = attendees.filter(a => a.willAttend === true || a.willAttend === 'true' || a.willAttend === undefined).length;
   const willNotAttendCount = attendees.filter(a => a.willAttend === false || a.willAttend === 'false' || a.willAttend === 'Will Not Attend').length;
+
+  // Dynamic Status Bar Calculations based on Selected Card
+  const getFilteredCountAndLabel = () => {
+    switch (selectedFilter) {
+      case 'will-attend':
+        return {
+          count: willAttendCount,
+          label: 'Will Attend (RSVP Yes)',
+          pct: totalAttendees > 0 ? Math.round((willAttendCount / totalAttendees) * 100) : 0,
+          colorClass: 'from-emerald-500 to-teal-500'
+        };
+      case 'will-not-attend':
+        return {
+          count: willNotAttendCount,
+          label: 'Will Not Attend (RSVP No)',
+          pct: totalAttendees > 0 ? Math.round((willNotAttendCount / totalAttendees) * 100) : 0,
+          colorClass: 'from-rose-500 to-red-500'
+        };
+      case 'present':
+        return {
+          count: presentCount,
+          label: 'Present Today',
+          pct: totalAttendees > 0 ? Math.round((presentCount / totalAttendees) * 100) : 0,
+          colorClass: 'from-green-500 to-emerald-500'
+        };
+      case 'absent':
+        return {
+          count: absentCount,
+          label: 'Absent Today',
+          pct: totalAttendees > 0 ? Math.round((absentCount / totalAttendees) * 100) : 0,
+          colorClass: 'from-orange-500 to-amber-500'
+        };
+      case 'all':
+      default:
+        return {
+          count: checkedInToday.size,
+          label: 'Overall Check-in Rate',
+          pct: totalAttendees > 0 ? Math.round((checkedInToday.size / totalAttendees) * 100) : 0,
+          colorClass: 'from-blue-500 to-orange-500'
+        };
+    }
+  };
+
+  const activeBarData = getFilteredCountAndLabel();
 
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
@@ -85,13 +135,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     setIsEditingEvent(false);
   };
 
-  const attendancePct = totalAttendees > 0 ? Math.round((checkedInToday.size / totalAttendees) * 100) : 0;
-
   return (
     <div className="space-y-6">
       {/* ─── Compact Event Header Banner ─── */}
       <div className="relative rounded-2xl overflow-hidden shadow-md group border border-gray-100 dark:border-slate-800 transition-all">
-        {/* Background Image or Gradient */}
         {eventConfig?.imageUrl ? (
           <div className="relative h-32 sm:h-36 w-full overflow-hidden bg-slate-900">
             <img 
@@ -106,10 +153,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="h-32 sm:h-36 w-full bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
         )}
 
-        {/* Header Overlay Content */}
         <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between text-white z-10">
           <div className="flex justify-between items-start">
-            {/* Minimal Icon-Only Edit Button */}
             <button
               onClick={() => {
                 setEventTitleInput(eventConfig?.title || '');
@@ -198,54 +243,111 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       )}
 
-      {/* ─── Stat Cards Grid ─── */}
+      {/* ─── Interactive Stat Cards Grid ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {/* Total Attendees */}
-        <div className="col-span-2 sm:col-span-1 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-2xl p-4 shadow-sm transition-all border border-blue-100 dark:border-blue-900/40">
+        <div 
+          onClick={() => setSelectedFilter('all')}
+          className={`col-span-2 sm:col-span-1 rounded-2xl p-4 shadow-sm transition-all cursor-pointer border ${
+            selectedFilter === 'all' 
+              ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-400 scale-[1.02]' 
+              : 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-900/80'
+          }`}
+        >
           <Users size={20} className="mb-2" />
           <p className="text-2xl font-bold">{totalAttendees}</p>
           <p className="text-xs opacity-80 font-medium">Total Registered</p>
         </div>
 
         {/* Will Attend (RSVP Yes) */}
-        <div className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl p-4 shadow-sm transition-all border border-emerald-100 dark:border-emerald-900/40">
+        <div 
+          onClick={() => setSelectedFilter('will-attend')}
+          className={`rounded-2xl p-4 shadow-sm transition-all cursor-pointer border ${
+            selectedFilter === 'will-attend'
+              ? 'bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-400 scale-[1.02]'
+              : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/80'
+          }`}
+        >
           <UserCheck2 size={20} className="mb-2" />
           <p className="text-2xl font-bold">{willAttendCount}</p>
           <p className="text-xs opacity-80 font-medium">Will Attend</p>
         </div>
 
         {/* Will Not Attend (RSVP No) */}
-        <div className="bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-2xl p-4 shadow-sm transition-all border border-rose-100 dark:border-rose-900/40">
+        <div 
+          onClick={() => setSelectedFilter('will-not-attend')}
+          className={`rounded-2xl p-4 shadow-sm transition-all cursor-pointer border ${
+            selectedFilter === 'will-not-attend'
+              ? 'bg-rose-600 text-white border-rose-600 ring-2 ring-rose-400 scale-[1.02]'
+              : 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/40 hover:bg-rose-100 dark:hover:bg-rose-900/80'
+          }`}
+        >
           <UserX2 size={20} className="mb-2" />
           <p className="text-2xl font-bold">{willNotAttendCount}</p>
           <p className="text-xs opacity-80 font-medium">Will Not Attend</p>
         </div>
 
         {/* Present Today */}
-        <div className="bg-green-50 dark:bg-green-950/60 text-green-600 dark:text-green-400 rounded-2xl p-4 shadow-sm transition-all border border-green-100 dark:border-green-900/40">
+        <div 
+          onClick={() => setSelectedFilter('present')}
+          className={`rounded-2xl p-4 shadow-sm transition-all cursor-pointer border ${
+            selectedFilter === 'present'
+              ? 'bg-green-600 text-white border-green-600 ring-2 ring-green-400 scale-[1.02]'
+              : 'bg-green-50 dark:bg-green-950/60 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/40 hover:bg-green-100 dark:hover:bg-green-900/80'
+          }`}
+        >
           <UserCheck size={20} className="mb-2" />
           <p className="text-2xl font-bold">{presentCount}</p>
           <p className="text-xs opacity-80 font-medium">Present</p>
         </div>
 
         {/* Absent Today */}
-        <div className="bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-2xl p-4 shadow-sm transition-all border border-orange-100 dark:border-orange-900/40">
+        <div 
+          onClick={() => setSelectedFilter('absent')}
+          className={`rounded-2xl p-4 shadow-sm transition-all cursor-pointer border ${
+            selectedFilter === 'absent'
+              ? 'bg-orange-600 text-white border-orange-600 ring-2 ring-orange-400 scale-[1.02]'
+              : 'bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-900/40 hover:bg-orange-100 dark:hover:bg-orange-900/80'
+          }`}
+        >
           <UserX size={20} className="mb-2" />
           <p className="text-2xl font-bold">{absentCount}</p>
           <p className="text-xs opacity-80 font-medium">Absent</p>
         </div>
       </div>
 
-      {/* Attendance Rate */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
+      {/* ─── Dynamic Status Bar Card ─── */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-800 transition-all">
         <div className="flex justify-between items-center mb-3">
-          <h3 className="font-semibold text-gray-800 dark:text-white text-sm">Attendance Rate</h3>
-          <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{attendancePct}%</span>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-gray-800 dark:text-white text-sm">
+              {activeBarData.label}
+            </h3>
+            {selectedFilter !== 'all' && (
+              <button 
+                onClick={() => setSelectedFilter('all')} 
+                className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md"
+              >
+                <RotateCcw size={10} /> Reset
+              </button>
+            )}
+          </div>
+          <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+            {activeBarData.pct}%
+          </span>
         </div>
+
+        {/* Animated Status Bar */}
         <div className="relative w-full h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-orange-500 rounded-full transition-all duration-1000" style={{ width: `${attendancePct}%` }} />
+          <div 
+            className={`absolute top-0 left-0 h-full bg-gradient-to-r ${activeBarData.colorClass} rounded-full transition-all duration-700 ease-out`} 
+            style={{ width: `${activeBarData.pct}%` }} 
+          />
         </div>
-        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">{checkedInToday.size} of {totalAttendees} attendees checked in today</p>
+
+        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
+          {activeBarData.count} of {totalAttendees} attendees ({activeBarData.pct}% of total registered)
+        </p>
       </div>
 
       {/* Manual Entry */}
