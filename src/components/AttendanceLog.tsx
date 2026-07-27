@@ -7,6 +7,7 @@ import SwipeableRow from './SwipeableRow';
 export default function AttendanceLog() {
   const { records, attendees, deleteRecord, clearRecords } = useData();
   const [filter, setFilter] = useState<'all' | 'check-in' | 'check-out'>('all');
+  const [filterDept, setFilterDept] = useState('all');
   const [filterGroup, setFilterGroup] = useState('all');
   const [filterTable, setFilterTable] = useState('all');
   const [search, setSearch] = useState('');
@@ -17,6 +18,7 @@ export default function AttendanceLog() {
   const attendeeMetaMap = new Map(attendees.map(a => [a.id, a]));
 
   // Dynamic dropdown options derived from live attendees
+  const departments = [...new Set(attendees.map(a => a.department).filter(Boolean))];
   const groups = [...new Set(attendees.map(a => a.group).filter(Boolean))];
   const tables = [...new Set(attendees.map(a => a.tableNo).filter(Boolean))];
 
@@ -27,6 +29,10 @@ export default function AttendanceLog() {
     const position = attendee?.position || '';
 
     const matchesType = filter === 'all' || r.type === filter;
+    const matchesDept = filterDept === 'all' || r.attendeeDepartment === filterDept;
+    const matchesGroup = filterGroup === 'all' || group === filterGroup;
+    const matchesTable = filterTable === 'all' || tableNo === filterTable;
+
     const matchesSearch =
       r.attendeeName.toLowerCase().includes(search.toLowerCase()) ||
       r.attendeeDepartment.toLowerCase().includes(search.toLowerCase()) ||
@@ -34,13 +40,10 @@ export default function AttendanceLog() {
       group.toLowerCase().includes(search.toLowerCase()) ||
       tableNo.toLowerCase().includes(search.toLowerCase());
 
-    const matchesGroup = filterGroup === 'all' || group === filterGroup;
-    const matchesTable = filterTable === 'all' || tableNo === filterTable;
-
     const matchesDate =
       !dateFilter || new Date(r.timestamp).toLocaleDateString('en-CA') === dateFilter;
 
-    return matchesType && matchesSearch && matchesGroup && matchesTable && matchesDate;
+    return matchesType && matchesDept && matchesGroup && matchesTable && matchesSearch && matchesDate;
   });
 
   const grouped: Record<string, typeof filtered> = {};
@@ -126,84 +129,105 @@ export default function AttendanceLog() {
         </div>
       )}
 
-      {/* Filters Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-        {/* Search */}
-        <div className="relative sm:col-span-12 md:col-span-4">
+      {/* Filters Section */}
+      <div className="space-y-2.5">
+        {/* Row 1: Long Full-Width Search Bar */}
+        <div className="relative w-full">
           <Search
             size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
           />
           <input
             type="text"
-            placeholder="Search name, dept, position, group, table..."
+            placeholder="Search by name, department, position, group, table..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm transition-colors"
           />
         </div>
 
-        {/* Type Filter */}
-        <div className="relative sm:col-span-4 md:col-span-2">
-          <Filter
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
-          />
-          <select
-            value={filter}
-            onChange={e => setFilter(e.target.value as typeof filter)}
-            className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
-          >
-            <option value="all">All Types</option>
-            <option value="check-in">Check-in Only</option>
-            <option value="check-out">Check-out Only</option>
-          </select>
-        </div>
+        {/* Row 2: Secondary Dropdown Filters Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-12 gap-2">
+          {/* Type Filter */}
+          <div className="relative sm:col-span-3">
+            <Filter
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
+            />
+            <select
+              value={filter}
+              onChange={e => setFilter(e.target.value as typeof filter)}
+              className="w-full pl-8 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+            >
+              <option value="all">All Types</option>
+              <option value="check-in">Check-in Only</option>
+              <option value="check-out">Check-out Only</option>
+            </select>
+          </div>
 
-        {/* Group Filter */}
-        <div className="relative sm:col-span-4 md:col-span-2">
-          <Users2
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
-          />
-          <select
-            value={filterGroup}
-            onChange={e => setFilterGroup(e.target.value)}
-            className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
-          >
-            <option value="all">All Groups</option>
-            {groups.map(g => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-        </div>
+          {/* Department Filter */}
+          <div className="relative sm:col-span-3">
+            <Filter
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
+            />
+            <select
+              value={filterDept}
+              onChange={e => setFilterDept(e.target.value)}
+              className="w-full pl-8 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+            >
+              <option value="all">All Depts</option>
+              {departments.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Table Filter */}
-        <div className="relative sm:col-span-4 md:col-span-2">
-          <LayoutGrid
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
-          />
-          <select
-            value={filterTable}
-            onChange={e => setFilterTable(e.target.value)}
-            className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
-          >
-            <option value="all">All Tables</option>
-            {tables.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
+          {/* Group Filter */}
+          <div className="relative sm:col-span-2">
+            <Users2
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
+            />
+            <select
+              value={filterGroup}
+              onChange={e => setFilterGroup(e.target.value)}
+              className="w-full pl-8 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+            >
+              <option value="all">All Groups</option>
+              {groups.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Date Filter */}
-        <div className="relative sm:col-span-12 md:col-span-2">
-          <input
-            type="date"
-            value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs transition-colors"
-          />
+          {/* Table Filter */}
+          <div className="relative sm:col-span-2">
+            <LayoutGrid
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
+            />
+            <select
+              value={filterTable}
+              onChange={e => setFilterTable(e.target.value)}
+              className="w-full pl-8 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+            >
+              <option value="all">All Tables</option>
+              {tables.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date Filter */}
+          <div className="relative col-span-2 sm:col-span-2">
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={e => setDateFilter(e.target.value)}
+              className="w-full px-2.5 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs transition-colors"
+            />
+          </div>
         </div>
       </div>
 
@@ -222,7 +246,7 @@ export default function AttendanceLog() {
           <Clock size={48} className="mx-auto text-gray-300 dark:text-slate-600 mb-4" />
           <p className="text-gray-500 dark:text-slate-400 font-medium">No records found</p>
           <p className="text-gray-400 dark:text-slate-500 text-sm mt-1">
-            {search || dateFilter || filter !== 'all' || filterGroup !== 'all' || filterTable !== 'all'
+            {search || dateFilter || filter !== 'all' || filterDept !== 'all' || filterGroup !== 'all' || filterTable !== 'all'
               ? 'Try adjusting your filters'
               : 'Scan QR codes to start recording attendance'}
           </p>
@@ -266,25 +290,27 @@ export default function AttendanceLog() {
                             {record.attendeeName}
                           </p>
 
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-xs text-gray-500 dark:text-slate-400">
-                              {record.attendeeDepartment}{attendee?.position ? ` · ${attendee.position}` : ''}
-                            </span>
-                            
-                            {/* Group Badge */}
-                            {attendee?.group && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200 dark:border-blue-900">
-                                <Users2 size={10} /> {attendee.group}
-                              </span>
-                            )}
+                          {/* Line 1: Department & Position */}
+                          <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5">
+                            {record.attendeeDepartment}{attendee?.position ? ` · ${attendee.position}` : ''}
+                          </p>
 
-                            {/* Table No. Badge */}
-                            {attendee?.tableNo && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-700/80">
-                                <LayoutGrid size={10} /> {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
-                              </span>
-                            )}
-                          </div>
+                          {/* Line 2: Group & Table No Badges below Department & Position */}
+                          {(attendee?.group || attendee?.tableNo) && (
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {attendee?.group && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200 dark:border-blue-900">
+                                  <Users2 size={10} /> {attendee.group}
+                                </span>
+                              )}
+
+                              {attendee?.tableNo && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-700/80">
+                                  <LayoutGrid size={10} /> {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <div className="text-right shrink-0">
@@ -292,7 +318,7 @@ export default function AttendanceLog() {
                             className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                               record.type === 'check-in'
                                 ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400'
-                                : 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400'
+                                : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400'
                             }`}
                           >
                             {record.type === 'check-in' ? 'Check In' : 'Check Out'}
