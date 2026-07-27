@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid, X } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid, X, Eye, EyeOff } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -23,6 +23,9 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const [activeReasonTooltip, setActiveReasonTooltip] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Toggle Visibility for Registration Link Banner
+  const [showRegistrationBanner, setShowRegistrationBanner] = useState(true);
+
   // Quick RSVP Editing Modal State
   const [editingRsvpAttendee, setEditingRsvpAttendee] = useState<Attendee | null>(null);
   const [rsvpWillAttend, setRsvpWillAttend] = useState<boolean>(true);
@@ -44,22 +47,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       document.body.removeChild(input);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
-    }
-  };
-
-  const handleShareLink = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'AttendEase Registration',
-          text: 'Register as an attendee and get your QR code:',
-          url: registrationLink,
-        });
-      } catch {
-        // User cancelled
-      }
-    } else {
-      handleCopyLink();
     }
   };
 
@@ -180,6 +167,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
   return (
     <div className="space-y-4">
+      {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Attendees</h2>
@@ -187,41 +175,48 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             {attendees.length} registered · <span className="text-green-600 dark:text-green-400 font-medium">{totalAttending} attending</span> · <span className="text-red-600 dark:text-red-400 font-medium">{totalNotAttending} declined</span>
           </p>
         </div>
-        <button onClick={() => onNavigate('add-attendee')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30">
-          <Plus size={18} /> Add New
-        </button>
-      </div>
 
-      {/* Share Link */}
-      <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-2xl p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <Share2 size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Registration Form</p>
-              <p className="text-[10px] text-blue-600 dark:text-blue-400 truncate">Share the link so attendees can self-register</p>
-            </div>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={handleCopyLink}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                linkCopied ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-            >
-              {linkCopied ? <Check size={14} /> : <Link size={14} />}
-              {linkCopied ? 'Copied!' : 'Copy Link'}
-            </button>
-            <button
-              onClick={handleShareLink}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700 transition-all border border-blue-200 dark:border-blue-800"
-            >
-              <Share2 size={14} />
-              Share
-            </button>
-          </div>
+        <div className="flex items-center gap-2">
+          {/* Toggle Banner Visibility Button */}
+          <button
+            onClick={() => setShowRegistrationBanner(!showRegistrationBanner)}
+            className="p-2.5 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-all"
+            title={showRegistrationBanner ? "Hide Registration Link Banner" : "Show Registration Link Banner"}
+          >
+            {showRegistrationBanner ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+
+          <button onClick={() => onNavigate('add-attendee')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/30">
+            <Plus size={18} /> Add New
+          </button>
         </div>
       </div>
+
+      {/* Toggleable Registration Link Banner (No Share Button) */}
+      {showRegistrationBanner && (
+        <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 transition-all animate-fade-in">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Link size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Registration Form</p>
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 truncate">Share the link so attendees can self-register</p>
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={handleCopyLink}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  linkCopied ? 'bg-green-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {linkCopied ? <Check size={14} /> : <Link size={14} />}
+                {linkCopied ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters Bar */}
       <div className="space-y-3">
