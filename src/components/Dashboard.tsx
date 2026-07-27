@@ -1,5 +1,19 @@
 import { useState } from 'react';
-import { Users, UserCheck, UserX, Clock, CheckCircle, XCircle, AlertTriangle, Image as ImageIcon, Edit2, Save, X } from 'lucide-react';
+import { 
+  Users, 
+  UserCheck, 
+  UserX, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  AlertTriangle, 
+  Image as ImageIcon, 
+  Edit2, 
+  Save, 
+  X,
+  UserCheck2,
+  UserX2
+} from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -21,6 +35,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [eventImageInput, setEventImageInput] = useState(eventConfig?.imageUrl || '');
   const [isSavingEvent, setIsSavingEvent] = useState(false);
 
+  // Stats Calculations
   const checkedInToday = new Set(todayRecords.filter(r => r.type === 'check-in').map(r => r.attendeeId));
   const presentIds = new Set<string>();
   for (const id of checkedInToday) {
@@ -31,6 +46,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const totalAttendees = attendees.length;
   const presentCount = presentIds.size;
   const absentCount = totalAttendees - checkedInToday.size;
+
+  // RSVP Stats
+  const willAttendCount = attendees.filter(a => a.willAttend === true || a.willAttend === 'true' || a.willAttend === undefined).length;
+  const willNotAttendCount = attendees.filter(a => a.willAttend === false || a.willAttend === 'false' || a.willAttend === 'Will Not Attend').length;
 
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
@@ -72,7 +91,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     <div className="space-y-6">
       {/* ─── Compact Event Header Banner ─── */}
       <div className="relative rounded-2xl overflow-hidden shadow-md group border border-gray-100 dark:border-slate-800 transition-all">
-        {/* Background Image or Gradient (Reduced Height) */}
+        {/* Background Image or Gradient */}
         {eventConfig?.imageUrl ? (
           <div className="relative h-32 sm:h-36 w-full overflow-hidden bg-slate-900">
             <img 
@@ -179,22 +198,41 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-2xl p-4 shadow-sm transition-colors">
+      {/* ─── Stat Cards Grid ─── */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {/* Total Attendees */}
+        <div className="col-span-2 sm:col-span-1 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-2xl p-4 shadow-sm transition-all border border-blue-100 dark:border-blue-900/40">
           <Users size={20} className="mb-2" />
           <p className="text-2xl font-bold">{totalAttendees}</p>
-          <p className="text-xs opacity-75">Total</p>
+          <p className="text-xs opacity-80 font-medium">Total Registered</p>
         </div>
-        <div className="bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400 rounded-2xl p-4 shadow-sm transition-colors">
+
+        {/* Will Attend (RSVP Yes) */}
+        <div className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-2xl p-4 shadow-sm transition-all border border-emerald-100 dark:border-emerald-900/40">
+          <UserCheck2 size={20} className="mb-2" />
+          <p className="text-2xl font-bold">{willAttendCount}</p>
+          <p className="text-xs opacity-80 font-medium">Will Attend</p>
+        </div>
+
+        {/* Will Not Attend (RSVP No) */}
+        <div className="bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-2xl p-4 shadow-sm transition-all border border-rose-100 dark:border-rose-900/40">
+          <UserX2 size={20} className="mb-2" />
+          <p className="text-2xl font-bold">{willNotAttendCount}</p>
+          <p className="text-xs opacity-80 font-medium">Will Not Attend</p>
+        </div>
+
+        {/* Present Today */}
+        <div className="bg-green-50 dark:bg-green-950/60 text-green-600 dark:text-green-400 rounded-2xl p-4 shadow-sm transition-all border border-green-100 dark:border-green-900/40">
           <UserCheck size={20} className="mb-2" />
           <p className="text-2xl font-bold">{presentCount}</p>
-          <p className="text-xs opacity-75">Present</p>
+          <p className="text-xs opacity-80 font-medium">Present</p>
         </div>
-        <div className="bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400 rounded-2xl p-4 shadow-sm transition-colors">
+
+        {/* Absent Today */}
+        <div className="bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 rounded-2xl p-4 shadow-sm transition-all border border-orange-100 dark:border-orange-900/40">
           <UserX size={20} className="mb-2" />
           <p className="text-2xl font-bold">{absentCount}</p>
-          <p className="text-xs opacity-75">Absent</p>
+          <p className="text-xs opacity-80 font-medium">Absent</p>
         </div>
       </div>
 
