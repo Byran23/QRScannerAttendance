@@ -57,45 +57,61 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const willAttendCount = attendees.filter(a => a.willAttend === true || a.willAttend === 'true' || a.willAttend === undefined).length;
   const willNotAttendCount = attendees.filter(a => a.willAttend === false || a.willAttend === 'false' || a.willAttend === 'Will Not Attend').length;
 
-  // Dynamic Status Bar Calculations based on Selected Card
+  // ─── Revised Status Bar Ratio Logic ───
   const getFilteredCountAndLabel = () => {
     switch (selectedFilter) {
-      case 'will-attend':
+      case 'all': {
+        // Total Registered -> Ratio of (Will Attend / Will Not Attend)
+        const totalRsvp = willAttendCount + willNotAttendCount;
+        const pct = totalRsvp > 0 ? Math.round((willAttendCount / totalRsvp) * 100) : 0;
         return {
-          count: willAttendCount,
-          label: 'Will Attend (RSVP Yes)',
-          pct: totalAttendees > 0 ? Math.round((willAttendCount / totalAttendees) * 100) : 0,
-          colorClass: 'from-emerald-500 to-teal-500'
+          label: 'Registration Confirmation Ratio (Will Attend vs. Will Not Attend)',
+          subText: `${willAttendCount} confirmed "Will Attend" out of ${totalRsvp} total RSVPs (${willNotAttendCount} declined)`,
+          pct,
+          colorClass: 'from-blue-500 to-indigo-600'
         };
-      case 'will-not-attend':
+      }
+
+      case 'will-attend': {
+        // Will Attend -> Ratio of Present / Will Attend
+        const pct = willAttendCount > 0 ? Math.round((presentCount / willAttendCount) * 100) : 0;
         return {
-          count: willNotAttendCount,
-          label: 'Will Not Attend (RSVP No)',
-          pct: totalAttendees > 0 ? Math.round((willNotAttendCount / totalAttendees) * 100) : 0,
-          colorClass: 'from-rose-500 to-red-500'
+          label: 'Turnout Rate (Present vs. Confirmed Will Attend)',
+          subText: `${presentCount} present today out of ${willAttendCount} expected attendees`,
+          pct,
+          colorClass: 'from-emerald-500 to-teal-600'
         };
-      case 'present':
+      }
+
+      case 'will-not-attend': {
+        const pct = totalAttendees > 0 ? Math.round((willNotAttendCount / totalAttendees) * 100) : 0;
         return {
-          count: presentCount,
-          label: 'Present Today',
-          pct: totalAttendees > 0 ? Math.round((presentCount / totalAttendees) * 100) : 0,
-          colorClass: 'from-green-500 to-emerald-500'
+          label: 'Declined Attendance Ratio',
+          subText: `${willNotAttendCount} of ${totalAttendees} total registered declined to attend`,
+          pct,
+          colorClass: 'from-rose-500 to-red-600'
         };
-      case 'absent':
+      }
+
+      case 'present': {
+        const pct = totalAttendees > 0 ? Math.round((presentCount / totalAttendees) * 100) : 0;
         return {
-          count: absentCount,
-          label: 'Absent Today',
-          pct: totalAttendees > 0 ? Math.round((absentCount / totalAttendees) * 100) : 0,
-          colorClass: 'from-orange-500 to-amber-500'
+          label: 'Overall Present Ratio',
+          subText: `${presentCount} of ${totalAttendees} total registered present right now`,
+          pct,
+          colorClass: 'from-green-500 to-emerald-600'
         };
-      case 'all':
-      default:
+      }
+
+      case 'absent': {
+        const pct = totalAttendees > 0 ? Math.round((absentCount / totalAttendees) * 100) : 0;
         return {
-          count: checkedInToday.size,
-          label: 'Overall Check-in Rate',
-          pct: totalAttendees > 0 ? Math.round((checkedInToday.size / totalAttendees) * 100) : 0,
-          colorClass: 'from-blue-500 to-orange-500'
+          label: 'Overall Absent Ratio',
+          subText: `${absentCount} of ${totalAttendees} total registered have not checked in`,
+          pct,
+          colorClass: 'from-orange-500 to-amber-600'
         };
+      }
     }
   };
 
@@ -245,7 +261,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* ─── Interactive Stat Cards Grid ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        {/* Total Attendees */}
+        {/* Total Registered */}
         <div 
           onClick={() => setSelectedFilter('all')}
           className={`col-span-2 sm:col-span-1 rounded-2xl p-4 shadow-sm transition-all cursor-pointer border ${
@@ -346,7 +362,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
 
         <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
-          {activeBarData.count} of {totalAttendees} attendees ({activeBarData.pct}% of total registered)
+          {activeBarData.subText}
         </p>
       </div>
 
