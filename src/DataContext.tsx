@@ -8,7 +8,7 @@ import {
   ReactNode,
 } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Attendee, AttendanceRecord } from './types';
+import { Attendee, AttendanceRecord, EventConfig } from './types';
 import { isGoogleSheetsConfigured, GOOGLE_SHEETS_CONFIG } from './googleSheets';
 
 // ─── localStorage keys ───
@@ -16,6 +16,7 @@ const LS_ATTENDEES = 'attendease_attendees';
 const LS_RECORDS = 'attendease_records';
 const LS_DELETED_RECORDS = 'attendease_deleted_record_ids';
 const LS_DELETED_ATTENDEES = 'attendease_deleted_attendee_ids';
+const LS_EVENT_CONFIG = 'attendease_event_config';
 
 function lsGet<T>(key: string): T[] {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
@@ -42,11 +43,12 @@ export function parseWillAttend(value: unknown): boolean {
   return true;
 }
 
-// ─── Context type ───
+// ─── Context Interface ───
 interface DataContextType {
   attendees: Attendee[];
   records: AttendanceRecord[];
   todayRecords: AttendanceRecord[];
+  eventConfig: EventConfig;
   loading: boolean;
   synced: boolean;
   refreshData: () => Promise<void>;
@@ -57,31 +59,32 @@ interface DataContextType {
   getAttendeeById: (id: string) => Attendee | undefined;
 
   addRecord: (attendee: Attendee, type: 'check-in' | 'check-out') => Promise<AttendanceRecord>;
-  checkInAttendee: (attendeeId: string) => Promise<AttendanceRecord | undefined>; // <-- Added function type
+  checkInAttendee: (attendeeId: string) => Promise<AttendanceRecord | undefined>;
   deleteRecord: (id: string) => Promise<void>;
   clearRecords: () => Promise<void>;
   getAttendeeLastAction: (attendeeId: string) => AttendanceRecord | undefined;
+
+  updateEventConfig: (config: EventConfig) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType>(null!);
 
 function seedDefaults(): Attendee[] {
   return [
-    { id: 'demo-001', name: 'Alice Johnson', email: 'alice@company.com', department: 'Engineering', position: 'Software Engineer', phone: '+1 (555) 123-4567', createdAt: new Date().toISOString(), willAttend: true, reason: '' },
-    { id: 'demo-002', name: 'Bob Smith', email: 'bob@company.com', department: 'Design Office', position: 'UI/UX Designer', phone: '+1 (555) 234-5678', createdAt: new Date().toISOString(), willAttend: true, reason: '' },
-    { id: 'demo-003', name: 'Carol Davis', email: 'carol@company.com', department: 'Marketing', position: 'Marketing Manager', phone: '+1 (555) 345-6789', createdAt: new Date().toISOString(), willAttend: true, reason: '' },
+    { id: 'demo-001', name: 'Alice Johnson', email: 'alice@company.com', department: 'Engineering', position: 'Software Engineer', phone: '+1 (555) 123-4567', createdAt: new Date().toISOString(), willAttend: true, reason: '', group: 'Group A', tableNo: '1' },
+    { id: 'demo-002', name: 'Bob Smith', email: 'bob@company.com', department: 'Design Office', position: 'UI/UX Designer', phone: '+1 (555) 234-5678', createdAt: new Date().toISOString(), willAttend: true, reason: '', group: 'Group B', tableNo: '2' },
+    { id: 'demo-003', name: 'Carol Davis', email: 'carol@company.com', department: 'Marketing', position: 'Marketing Manager', phone: '+1 (555) 345-6789', createdAt: new Date().toISOString(), willAttend: true, reason: '', group: 'Group A', tableNo: '3' },
   ];
 }
 
-// ─── Google Sheets API ───
-async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceRecord[] }> {
+// ─── Google Sheets API Fetch ───
+async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceRecord[]; eventConfig: EventConfig }> {
   const url = `${GOOGLE_SHEETS_CONFIG.WEB_APP_URL}?action=getAll&t=${Date.now()}`;
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   if (!data.success) throw new Error(data.error || 'Failed to fetch');
 
-  // Inside gsGet() mapping in DataContext.tsx:
   const parsedAttendees: Attendee[] = (data.attendees || []).map((a: any) => ({
     id: String(a.id || ''),
     name: String(a.name || ''),
@@ -96,11 +99,17 @@ async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceReco
     tableNo: String(a.tableNo || ''),
   }));
 
+  const parsedConfig: EventConfig = {
+    title: String(data.eventConfig?.title || ''),
+    imageUrl: String(data.eventConfig?.imageUrl || ''),
+  };
+
   return {
     attendees: parsedAttendees.sort((a, b) => a.name.localeCompare(b.name)),
     records: (data.records || []).sort((a: AttendanceRecord, b: AttendanceRecord) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     ),
+    eventConfig: parsedConfig,
   };
 }
 
@@ -116,10 +125,18 @@ async function gsPost(action: string, payload: Record<string, unknown>) {
   return data;
 }
 
-// ─── Provider ───
+// ─── Provider Component ───
 export function DataProvider({ children }: { children: ReactNode }) {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [eventConfig, setEventConfig] = useState<EventConfig>(() => {
+    try {
+      const saved = localStorage.getItem(LS_EVENT_CONFIG);
+      return saved ? JSON.parse(saved) : { title: '', imageUrl: '' };
+    } catch {
+      return { title: '', imageUrl: '' };
+    }
+  });
   const [loading, setLoading] = useState(true);
   const synced = isGoogleSheetsConfigured();
 
@@ -145,6 +162,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const filtered = applyTombstones(data.attendees, data.records);
         setAttendees(filtered.attendees);
         setRecords(filtered.records);
+        if (data.eventConfig) {
+          setEventConfig(data.eventConfig);
+          localStorage.setItem(LS_EVENT_CONFIG, JSON.stringify(data.eventConfig));
+        }
         lsSet(LS_ATTENDEES, filtered.attendees);
         lsSet(LS_RECORDS, filtered.records);
       } catch (err) {
@@ -179,14 +200,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const todayRecords = records.filter(r => new Date(r.timestamp).toDateString() === new Date().toDateString());
 
-  // ── Attendees ──
+  // ── Attendees Functions ──
   const addAttendeeFn = useCallback(async (data: Omit<Attendee, 'id' | 'createdAt'>) => {
     const attendee: Attendee = { 
       ...data, 
       id: uuidv4(), 
       createdAt: new Date().toISOString(),
       willAttend: data.willAttend !== false,
-      reason: data.reason || ''
+      reason: data.reason || '',
+      group: data.group || '',
+      tableNo: data.tableNo || '',
     };
     setAttendees(prev => [...prev, attendee].sort((a,b)=>a.name.localeCompare(b.name)));
     const next = [...lsGet<Attendee>(LS_ATTENDEES), attendee];
@@ -208,7 +231,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const updated = {
       ...attendee,
       willAttend: attendee.willAttend !== false,
-      reason: attendee.reason || ''
+      reason: attendee.reason || '',
+      group: attendee.group || '',
+      tableNo: attendee.tableNo || '',
     };
     setAttendees(prev => prev.map(a => a.id === updated.id ? updated : a));
     const next = lsGet<Attendee>(LS_ATTENDEES).map(a => a.id === updated.id ? updated : a);
@@ -246,7 +271,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const getAttendeeById = useCallback((id: string) => attendees.find(a => a.id === id), [attendees]);
 
-  // ── Records ──
+  // ── Records Functions ──
   const addRecordFn = useCallback(async (attendee: Attendee, type: 'check-in' | 'check-out'): Promise<AttendanceRecord> => {
     const record: AttendanceRecord = {
       id: uuidv4(),
@@ -273,7 +298,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return record;
   }, [synced, refreshData]);
 
-  // ── Check In Function ──
   const checkInAttendeeFn = useCallback(async (attendeeId: string) => {
     const attendee = attendees.find(a => a.id === attendeeId);
     if (!attendee) return undefined;
@@ -336,12 +360,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [todayRecords]
   );
 
+  // ── Event Config Function ──
+  const updateEventConfigFn = useCallback(async (config: EventConfig) => {
+    setEventConfig(config);
+    localStorage.setItem(LS_EVENT_CONFIG, JSON.stringify(config));
+
+    if (synced) {
+      try {
+        await gsPost('updateEventConfig', { eventConfig: config });
+      } catch (err) {
+        console.error('Failed to update event config in Google Sheets', err);
+      }
+    }
+  }, [synced]);
+
   return (
     <DataContext.Provider
       value={{
         attendees,
         records,
         todayRecords,
+        eventConfig,
         loading,
         synced,
         refreshData,
@@ -350,10 +389,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deleteAttendee: deleteAttendeeFn,
         getAttendeeById,
         addRecord: addRecordFn,
-        checkInAttendee: checkInAttendeeFn, // <-- Passed into provider value
+        checkInAttendee: checkInAttendeeFn,
         deleteRecord: deleteRecordFn,
         clearRecords: clearRecordsFn,
         getAttendeeLastAction,
+        updateEventConfig: updateEventConfigFn,
       }}
     >
       {children}
@@ -364,42 +404,3 @@ export function DataProvider({ children }: { children: ReactNode }) {
 export function useData() {
   return useContext(DataContext);
 }
-
-// Inside DataContext.tsx
-
-// Add key for local storage
-const LS_EVENT_CONFIG = 'attendease_event_config';
-
-interface DataContextType {
-  // ... all existing fields ...
-  eventConfig: EventConfig;
-  updateEventConfig: (config: EventConfig) => Promise<void>;
-}
-
-// In DataProvider component:
-const [eventConfig, setEventConfig] = useState<EventConfig>(() => {
-  try {
-    const saved = localStorage.getItem(LS_EVENT_CONFIG);
-    return saved ? JSON.parse(saved) : { title: '', imageUrl: '' };
-  } catch {
-    return { title: '', imageUrl: '' };
-  }
-});
-
-// Update gsGet to fetch event config from Google Sheets
-// (The Gas backend returns eventConfig from AdminPins range J2:K2)
-
-const updateEventConfigFn = useCallback(async (config: EventConfig) => {
-  setEventConfig(config);
-  localStorage.setItem(LS_EVENT_CONFIG, JSON.stringify(config));
-
-  if (synced) {
-    try {
-      await gsPost('updateEventConfig', { eventConfig: config });
-    } catch (err) {
-      console.error('Failed to update event config in Google Sheets', err);
-    }
-  }
-}, [synced]);
-
-// Expose eventConfig & updateEventConfig in DataContext.Provider value
