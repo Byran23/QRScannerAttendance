@@ -70,11 +70,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   return (
     <div className="space-y-6">
-      {/* ─── Event Header Banner ─── */}
-      <div className="relative rounded-2xl overflow-hidden shadow-xl group border border-gray-100 dark:border-slate-800 transition-all">
-        {/* Background Image or Gradient */}
+      {/* ─── Compact Event Header Banner ─── */}
+      <div className="relative rounded-2xl overflow-hidden shadow-md group border border-gray-100 dark:border-slate-800 transition-all">
+        {/* Background Image or Gradient (Reduced Height) */}
         {eventConfig?.imageUrl ? (
-          <div className="relative h-48 sm:h-56 w-full overflow-hidden bg-slate-900">
+          <div className="relative h-32 sm:h-36 w-full overflow-hidden bg-slate-900">
             <img 
               src={eventConfig.imageUrl} 
               alt="Event Header" 
@@ -84,41 +84,42 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
           </div>
         ) : (
-          <div className="h-44 sm:h-48 w-full bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
+          <div className="h-32 sm:h-36 w-full bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
         )}
 
-        {/* Text Content Overlay */}
-        <div className="absolute inset-0 p-6 flex flex-col justify-between text-white z-10">
+        {/* Header Overlay Content */}
+        <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between text-white z-10">
           <div className="flex justify-between items-start">
+            {/* Minimal Icon-Only Edit Button */}
             <button
               onClick={() => {
                 setEventTitleInput(eventConfig?.title || '');
                 setEventImageInput(eventConfig?.imageUrl || '');
                 setIsEditingEvent(true);
               }}
-              className="ml-auto bg-black/40 hover:bg-black/60 backdrop-blur-md text-white text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all border border-white/20 shadow-md"
-              title="Edit Event Title and Header Image"
+              className="ml-auto bg-black/40 hover:bg-black/60 backdrop-blur-md text-white p-2 rounded-xl transition-all border border-white/20 shadow-md active:scale-95"
+              title="Edit Event Header"
             >
-              <Edit2 size={13} /> Edit Header
+              <Edit2 size={15} />
             </button>
           </div>
 
           <div>
             {eventConfig?.title ? (
-              <h1 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-md uppercase tracking-wide">
+              <h1 className="text-lg sm:text-xl font-extrabold text-white drop-shadow-md uppercase tracking-wide truncate">
                 {eventConfig.title}
               </h1>
             ) : (
-              <h1 className="text-2xl font-bold drop-shadow">{greeting}!</h1>
+              <h1 className="text-xl font-bold drop-shadow">{greeting}!</h1>
             )}
-            <p className="text-blue-100 text-xs sm:text-sm mt-1 drop-shadow flex items-center gap-2">
+            <p className="text-blue-100 text-xs mt-0.5 drop-shadow flex items-center gap-1.5">
               <span>{greeting}</span> · <span>{dateStr}</span>
             </p>
           </div>
         </div>
       </div>
 
-      {/* Edit Header Modal/Panel */}
+      {/* Edit Header Form Modal/Panel */}
       {isEditingEvent && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-lg border border-blue-200 dark:border-blue-900 animate-fade-in space-y-4">
           <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
@@ -133,7 +134,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">
-                Event Title for Today (Logged to Sheet Column J)
+                Event Title
               </label>
               <input 
                 type="text" 
@@ -146,7 +147,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
             <div>
               <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">
-                Header Image URL (Logged to Sheet Column K)
+                Header Image URL
               </label>
               <input 
                 type="url" 
