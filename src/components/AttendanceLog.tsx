@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, Trash2, Download, Filter, Search, Users2, LayoutGrid } from 'lucide-react';
+import { Clock, Trash2, Download, Filter, Search, Users2, LayoutGrid, Calendar } from 'lucide-react';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
 import SwipeableRow from './SwipeableRow';
@@ -14,36 +14,53 @@ export default function AttendanceLog() {
   const [dateFilter, setDateFilter] = useState('');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-  // Helper map to quickly find group, table, and position details from current attendees
+  // Quick lookup map for attendee meta details
   const attendeeMetaMap = new Map(attendees.map(a => [a.id, a]));
 
-  // Dynamic dropdown options derived from live attendees
-  const departments = [...new Set(attendees.map(a => a.department).filter(Boolean))];
-  const groups = [...new Set(attendees.map(a => a.group).filter(Boolean))];
-  const tables = [...new Set(attendees.map(a => a.tableNo).filter(Boolean))];
+  // ─── Filter Options Sorting ───
+
+  // Departments (Alphabetical)
+  const departments = [...new Set(attendees.map(a => a.department).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  // Groups (Alphabetical A-Z)
+  const groups = [...new Set(attendees.map(a => a.group).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  // Table Numbers (Lowest to Highest Numerically)
+  const tables = [...new Set(attendees.map(a => a.tableNo).filter(Boolean))]
+    .sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ''), 10);
+      const numB = parseInt(b.replace(/\D/g, ''), 10);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
   const filtered = records.filter(r => {
     const attendee = attendeeMetaMap.get(r.attendeeId);
     const group = attendee?.group || '';
     const tableNo = attendee?.tableNo || '';
     const position = attendee?.position || '';
+    const department = r.attendeeDepartment || attendee?.department || '';
 
     const matchesType = filter === 'all' || r.type === filter;
-    const matchesDept = filterDept === 'all' || r.attendeeDepartment === filterDept;
-    const matchesGroup = filterGroup === 'all' || group === filterGroup;
-    const matchesTable = filterTable === 'all' || tableNo === filterTable;
-
     const matchesSearch =
       r.attendeeName.toLowerCase().includes(search.toLowerCase()) ||
-      r.attendeeDepartment.toLowerCase().includes(search.toLowerCase()) ||
+      department.toLowerCase().includes(search.toLowerCase()) ||
       position.toLowerCase().includes(search.toLowerCase()) ||
       group.toLowerCase().includes(search.toLowerCase()) ||
       tableNo.toLowerCase().includes(search.toLowerCase());
 
+    const matchesDept = filterDept === 'all' || department === filterDept;
+    const matchesGroup = filterGroup === 'all' || group === filterGroup;
+    const matchesTable = filterTable === 'all' || tableNo === filterTable;
+
     const matchesDate =
       !dateFilter || new Date(r.timestamp).toLocaleDateString('en-CA') === dateFilter;
 
-    return matchesType && matchesDept && matchesGroup && matchesTable && matchesSearch && matchesDate;
+    return matchesType && matchesSearch && matchesDept && matchesGroup && matchesTable && matchesDate;
   });
 
   const grouped: Record<string, typeof filtered> = {};
@@ -129,9 +146,9 @@ export default function AttendanceLog() {
         </div>
       )}
 
-      {/* Filters Section */}
+      {/* Filters Bar */}
       <div className="space-y-2.5">
-        {/* Row 1: Long Full-Width Search Bar */}
+        {/* Row 1: Longest Search Bar */}
         <div className="relative w-full">
           <Search
             size={18}
@@ -139,17 +156,17 @@ export default function AttendanceLog() {
           />
           <input
             type="text"
-            placeholder="Search by name, department, position, group, table..."
+            placeholder="Search name, position, department, group, or table..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm transition-colors"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm"
           />
         </div>
 
-        {/* Row 2: Secondary Dropdown Filters Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-12 gap-2">
+        {/* Row 2: Secondary Filters */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {/* Type Filter */}
-          <div className="relative sm:col-span-3">
+          <div className="relative">
             <Filter
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
@@ -165,8 +182,8 @@ export default function AttendanceLog() {
             </select>
           </div>
 
-          {/* Department Filter */}
-          <div className="relative sm:col-span-3">
+          {/* Department Filter (Alphabetical) */}
+          <div className="relative">
             <Filter
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
@@ -183,8 +200,8 @@ export default function AttendanceLog() {
             </select>
           </div>
 
-          {/* Group Filter */}
-          <div className="relative sm:col-span-2">
+          {/* Group Filter (Alphabetical A-Z) */}
+          <div className="relative">
             <Users2
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
@@ -201,8 +218,8 @@ export default function AttendanceLog() {
             </select>
           </div>
 
-          {/* Table Filter */}
-          <div className="relative sm:col-span-2">
+          {/* Table Filter (Sorted Lowest to Highest) */}
+          <div className="relative">
             <LayoutGrid
               size={15}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"
@@ -220,12 +237,12 @@ export default function AttendanceLog() {
           </div>
 
           {/* Date Filter */}
-          <div className="relative col-span-2 sm:col-span-2">
+          <div className="relative col-span-2 sm:col-span-4 md:col-span-1">
             <input
               type="date"
               value={dateFilter}
               onChange={e => setDateFilter(e.target.value)}
-              className="w-full px-2.5 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs transition-colors"
+              className="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs transition-colors"
             />
           </div>
         </div>
@@ -240,7 +257,7 @@ export default function AttendanceLog() {
         </p>
       )}
 
-      {/* Records */}
+      {/* Records List */}
       {Object.keys(grouped).length === 0 ? (
         <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 transition-colors">
           <Clock size={48} className="mx-auto text-gray-300 dark:text-slate-600 mb-4" />
@@ -276,37 +293,40 @@ export default function AttendanceLog() {
 
                   return (
                     <SwipeableRow key={record.id} onDelete={() => deleteRecord(record.id)}>
-                      <div className="bg-white dark:bg-slate-900 p-4 shadow-sm border border-gray-100 dark:border-slate-800 flex items-center gap-4 select-none cursor-default">
+                      <div className="bg-white dark:bg-slate-900 p-4 shadow-sm border border-gray-100 dark:border-slate-800 flex items-start gap-4 select-none cursor-default rounded-xl">
                         <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${getInitialsBg(
+                          className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5 ${getInitialsBg(
                             record.attendeeName,
                           )}`}
                         >
                           {getInitials(record.attendeeName)}
                         </div>
 
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          {/* Attendee Name */}
                           <p className="font-semibold text-gray-800 dark:text-white truncate">
                             {record.attendeeName}
                           </p>
 
                           {/* Line 1: Department & Position */}
-                          <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5">
+                          <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
                             {record.attendeeDepartment}{attendee?.position ? ` · ${attendee.position}` : ''}
                           </p>
 
-                          {/* Line 2: Group & Table No Badges below Department & Position */}
+                          {/* Line 2: Group & Table No. Badges placed directly below Department and Position */}
                           {(attendee?.group || attendee?.tableNo) && (
-                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
                               {attendee?.group && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200 dark:border-blue-900">
-                                  <Users2 size={10} /> {attendee.group}
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-[11px] border border-blue-200 dark:border-blue-900">
+                                  <Users2 size={11} className="text-blue-600 dark:text-blue-400" />
+                                  {attendee.group}
                                 </span>
                               )}
 
                               {attendee?.tableNo && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-700/80">
-                                  <LayoutGrid size={10} /> {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 font-bold text-[11px] border border-amber-300 dark:border-amber-700/80 shadow-sm">
+                                  <LayoutGrid size={11} className="text-amber-600 dark:text-amber-400" />
+                                  {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
                                 </span>
                               )}
                             </div>
@@ -315,7 +335,7 @@ export default function AttendanceLog() {
 
                         <div className="text-right shrink-0">
                           <span
-                            className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                            className={`text-xs font-semibold px-2.5 py-1 rounded-full inline-block ${
                               record.type === 'check-in'
                                 ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400'
                                 : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400'
