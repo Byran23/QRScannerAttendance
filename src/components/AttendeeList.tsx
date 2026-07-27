@@ -76,10 +76,26 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return true;
   };
 
-  // Dynamic filter dropdown lists
-  const departments = [...new Set(attendees.map(a => a.department).filter(Boolean))];
-  const groups = [...new Set(attendees.map(a => a.group).filter(Boolean))];
-  const tables = [...new Set(attendees.map(a => a.tableNo).filter(Boolean))];
+  // ─── Filter Options Sorting ───
+
+  // Departments (Alphabetical)
+  const departments = [...new Set(attendees.map(a => a.department).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  // Groups (Alphabetical A-Z)
+  const groups = [...new Set(attendees.map(a => a.group).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  // Table Numbers (Sorted Lowest to Highest Numerically)
+  const tables = [...new Set(attendees.map(a => a.tableNo).filter(Boolean))]
+    .sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ''), 10);
+      const numB = parseInt(b.replace(/\D/g, ''), 10);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
   // Filtering
   const filtered = attendees.filter(a => {
@@ -89,6 +105,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       a.name.toLowerCase().includes(search.toLowerCase()) || 
       a.email.toLowerCase().includes(search.toLowerCase()) || 
       a.department.toLowerCase().includes(search.toLowerCase()) ||
+      (a.position && a.position.toLowerCase().includes(search.toLowerCase())) ||
       (a.group && a.group.toLowerCase().includes(search.toLowerCase())) ||
       (a.tableNo && a.tableNo.toLowerCase().includes(search.toLowerCase())) ||
       (a.reason && a.reason.toLowerCase().includes(search.toLowerCase()));
@@ -115,7 +132,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       case 'office-asc':
         return a.department.localeCompare(b.department) || a.name.localeCompare(b.name);
       case 'date-asc':
-        return (new Date(a.createdAt || 0).getTime()) - (new Date(b.createdAt || 0).getTime());
+        return (new Date(a.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime());
       case 'date-desc':
       default:
         return (new Date(b.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime());
@@ -189,7 +206,8 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       </div>
 
       {/* Filters Bar */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
+        {/* Attendance Status Tabs */}
         <div className="flex bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit">
           <button
             onClick={() => setFilterAttendance('all')}
@@ -223,60 +241,66 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-          <div className="relative sm:col-span-12 md:col-span-4">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
-            <input 
-              type="text" 
-              placeholder="Search name, dept, group, table..." 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm" 
-            />
-          </div>
+        {/* Row 1: Longest Search Bar */}
+        <div className="relative w-full">
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          <input 
+            type="text" 
+            placeholder="Search name, position, department, group, or table..." 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm" 
+          />
+        </div>
 
-          <div className="relative sm:col-span-4 md:col-span-2">
-            <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+        {/* Row 2: Secondary Filters */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {/* Department Filter (Alphabetical) */}
+          <div className="relative">
+            <Filter size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
               value={filterDept} 
               onChange={e => setFilterDept(e.target.value)} 
-              className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+              className="w-full pl-8 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
             >
               <option value="all">All Depts</option>
               {departments.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
 
-          <div className="relative sm:col-span-4 md:col-span-2">
-            <Users2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          {/* Group Filter (Alphabetical A-Z) */}
+          <div className="relative">
+            <Users2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
               value={filterGroup} 
               onChange={e => setFilterGroup(e.target.value)} 
-              className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+              className="w-full pl-8 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
             >
               <option value="all">All Groups</option>
               {groups.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
 
-          <div className="relative sm:col-span-4 md:col-span-2">
-            <LayoutGrid size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          {/* Table No. Filter (Lowest to Highest) */}
+          <div className="relative">
+            <LayoutGrid size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
               value={filterTable} 
               onChange={e => setFilterTable(e.target.value)} 
-              className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+              className="w-full pl-8 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
             >
               <option value="all">All Tables</option>
               {tables.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
-          <div className="relative sm:col-span-12 md:col-span-2">
-            <ArrowUpDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <ArrowUpDown size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
               value={sortBy} 
               onChange={e => setSortBy(e.target.value as SortOption)} 
-              className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+              className="w-full pl-8 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
             >
               <option value="date-desc">Newest First</option>
               <option value="date-asc">Oldest First</option>
@@ -311,114 +335,87 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                     : 'border-gray-100 dark:border-slate-800 hover:shadow-md'
                 }`}
               >
-                <div className="flex items-start justify-between gap-4">
-                  {/* Left Column: Avatar + Details */}
-                  <div className="flex items-start gap-4 min-w-0 flex-1">
-                    <div className={`w-12 h-12 rounded-full ${getInitialsBg(attendee.name)} flex items-center justify-center text-white text-lg font-bold shrink-0 mt-0.5`}>
-                      {getInitials(attendee.name)}
-                    </div>
+                <div className="flex items-start gap-4">
+                  <div className={`w-12 h-12 rounded-full ${getInitialsBg(attendee.name)} flex items-center justify-center text-white text-lg font-bold shrink-0 mt-0.5`}>
+                    {getInitials(attendee.name)}
+                  </div>
 
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(attendee.id)}>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
+                  {/* Main Info */}
+                  <div className="flex-1 min-w-0 cursor-pointer space-y-1" onClick={() => toggleExpand(attendee.id)}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
 
-                        {/* Attendance Intention Badge */}
-                        <div className="relative inline-block">
-                          <span 
-                            onClick={(e) => {
-                              if (!isAttending) {
-                                e.stopPropagation();
-                                setActiveReasonTooltip(prev => prev === attendee.id ? null : attendee.id);
-                              }
-                            }}
-                            onMouseEnter={() => {
-                              if (!isAttending) setActiveReasonTooltip(attendee.id);
-                            }}
-                            onMouseLeave={() => {
-                              if (!isAttending) setActiveReasonTooltip(null);
-                            }}
-                            className={`text-xs px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-transform active:scale-95 ${
-                              isAttending 
-                                ? 'bg-green-100 dark:bg-green-950/80 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800' 
-                                : 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
-                            }`}
-                          >
-                            {isAttending ? <CheckCircle2 size={13} className="shrink-0" /> : <XCircle size={13} className="shrink-0" />}
-                            {isAttending ? 'Will Attend' : 'Will Not Attend'}
-                            {!isAttending && <AlertCircle size={12} className="ml-0.5 text-red-500 animate-pulse shrink-0" />}
-                          </span>
+                      {/* Attendance Intention Badge */}
+                      <div className="relative inline-block">
+                        <span 
+                          onClick={(e) => {
+                            if (!isAttending) {
+                              e.stopPropagation();
+                              setActiveReasonTooltip(prev => prev === attendee.id ? null : attendee.id);
+                            }
+                          }}
+                          onMouseEnter={() => {
+                            if (!isAttending) setActiveReasonTooltip(attendee.id);
+                          }}
+                          onMouseLeave={() => {
+                            if (!isAttending) setActiveReasonTooltip(null);
+                          }}
+                          className={`text-xs px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer transition-transform active:scale-95 ${
+                            isAttending 
+                              ? 'bg-green-100 dark:bg-green-950/80 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800' 
+                              : 'bg-red-100 dark:bg-red-950/80 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
+                          }`}
+                        >
+                          {isAttending ? <CheckCircle2 size={13} className="shrink-0" /> : <XCircle size={13} className="shrink-0" />}
+                          {isAttending ? 'Will Attend' : 'Will Not Attend'}
+                          {!isAttending && <AlertCircle size={12} className="ml-0.5 text-red-500 animate-pulse shrink-0" />}
+                        </span>
 
-                          {/* Tooltip Reason */}
-                          {!isAttending && isTooltipOpen && (
-                            <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-xs rounded-xl shadow-xl border border-slate-700 z-50 animate-fade-in">
-                              <div className="flex items-center gap-1.5 text-red-400 font-semibold mb-1 uppercase text-[10px] tracking-wider">
-                                <AlertCircle size={13} /> Reason For Non-Attendance
-                              </div>
-                              <p className="italic text-slate-200 font-normal">
-                                {attendee.reason ? `"${attendee.reason}"` : 'No specific reason provided.'}
-                              </p>
-                              <div className="absolute left-4 top-full w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-slate-900 dark:border-t-slate-800"></div>
+                        {/* Tooltip Reason */}
+                        {!isAttending && isTooltipOpen && (
+                          <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white text-xs rounded-xl shadow-xl border border-slate-700 z-50 animate-fade-in">
+                            <div className="flex items-center gap-1.5 text-red-400 font-semibold mb-1 uppercase text-[10px] tracking-wider">
+                              <AlertCircle size={13} /> Reason For Non-Attendance
                             </div>
-                          )}
-                        </div>
-
-                        {/* Live Status */}
-                        {isAttending && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            status === 'present' 
-                              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
-                              : status === 'checked-out' 
-                              ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800' 
-                              : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
-                          }`}>
-                            {status === 'present' ? 'Present' : status === 'checked-out' ? 'Left' : 'Absent'}
-                          </span>
+                            <p className="italic text-slate-200 font-normal">
+                              {attendee.reason ? `"${attendee.reason}"` : 'No specific reason provided.'}
+                            </p>
+                            <div className="absolute left-4 top-full w-0 h-0 border-x-8 border-x-transparent border-t-8 border-t-slate-900 dark:border-t-slate-800"></div>
+                          </div>
                         )}
                       </div>
 
-                      <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 truncate">{attendee.department} · {attendee.position}</p>
-                      <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">{attendee.email || 'No email'} · {attendee.phone || 'No phone'}</p>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Icons on Top + Group/Table Badges Side-by-Side Below */}
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    {/* Action Icons Row */}
-                    <div className="flex items-center gap-1">
-                      <button 
-                        onClick={() => toggleExpand(attendee.id)} 
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 transition-colors" 
-                        title={isExpanded ? "Collapse" : "Expand"}
-                      >
-                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                      </button>
-                      
-                      {/* QR Code Button STRICTLY Hidden for Non-Attendees */}
+                      {/* Live Status */}
                       {isAttending && (
-                        <button 
-                          onClick={() => onNavigate('qr-view', attendee)} 
-                          className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg text-blue-600 dark:text-blue-400 transition-colors" 
-                          title="View QR Code"
-                        >
-                          <QrCode size={18} />
-                        </button>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          status === 'present' 
+                            ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' 
+                            : status === 'checked-out' 
+                            ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800' 
+                            : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
+                        }`}>
+                          {status === 'present' ? 'Present' : status === 'checked-out' ? 'Left' : 'Absent'}
+                        </span>
                       )}
-
-                      <button onClick={() => onNavigate('edit-attendee', attendee)} className="p-2 hover:bg-sky-50 dark:hover:bg-sky-950 rounded-lg text-sky-600 dark:text-sky-400 transition-colors" title="Edit"><Edit size={18} /></button>
-                      <button onClick={() => setShowDeleteConfirm(attendee.id)} className="p-2 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-lg text-orange-500 dark:text-orange-400 transition-colors" title="Delete"><Trash2 size={18} /></button>
                     </div>
 
-                    {/* Group & Table No. Badges Side-by-Side directly below action icons */}
+                    {/* Department & Position */}
+                    <p className="text-xs text-gray-600 dark:text-slate-400 truncate">
+                      {attendee.department} · {attendee.position}
+                    </p>
+
+                    {/* Group & Table No. Badges placed directly below Department and Position */}
                     {(attendee.group || attendee.tableNo) && (
-                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                      <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
                         {attendee.group && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-medium text-[11px] border border-blue-200 dark:border-blue-800 shadow-2xs">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-[11px] border border-blue-200 dark:border-blue-900">
                             <Users2 size={11} className="text-blue-600 dark:text-blue-400" />
                             {attendee.group}
                           </span>
                         )}
+
                         {attendee.tableNo && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 font-bold text-[11px] border border-amber-300 dark:border-amber-700/80 shadow-2xs">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 font-bold text-[11px] border border-amber-300 dark:border-amber-700/80 shadow-sm">
                             <LayoutGrid size={11} className="text-amber-600 dark:text-amber-400" />
                             {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
                           </span>
@@ -426,12 +423,45 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       </div>
                     )}
                   </div>
+
+                  {/* Actions Column */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button 
+                      onClick={() => toggleExpand(attendee.id)} 
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg text-gray-500 dark:text-slate-400 transition-colors" 
+                      title={isExpanded ? "Collapse" : "Expand"}
+                    >
+                      {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    </button>
+                    
+                    {/* QR Code Button STRICTLY Hidden for Non-Attendees */}
+                    {isAttending && (
+                      <button 
+                        onClick={() => onNavigate('qr-view', attendee)} 
+                        className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg text-blue-600 dark:text-blue-400 transition-colors" 
+                        title="View QR Code"
+                      >
+                        <QrCode size={18} />
+                      </button>
+                    )}
+
+                    <button onClick={() => onNavigate('edit-attendee', attendee)} className="p-2 hover:bg-sky-50 dark:hover:bg-sky-950 rounded-lg text-sky-600 dark:text-sky-400 transition-colors" title="Edit"><Edit size={18} /></button>
+                    <button onClick={() => setShowDeleteConfirm(attendee.id)} className="p-2 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-lg text-orange-500 dark:text-orange-400 transition-colors" title="Delete"><Trash2 size={18} /></button>
+                  </div>
                 </div>
 
                 {/* Expanded Details */}
                 {isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
+                      <div>
+                        <span className="font-medium text-gray-700 dark:text-slate-300">Email: </span>
+                        {attendee.email || 'N/A'}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700 dark:text-slate-300">Phone: </span>
+                        {attendee.phone || 'N/A'}
+                      </div>
                       <div>
                         <span className="font-medium text-gray-700 dark:text-slate-300">Registration Date: </span>
                         {attendee.createdAt ? new Date(attendee.createdAt).toLocaleString() : 'N/A'}
@@ -442,7 +472,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       </div>
                     </div>
 
-                    {/* Check In Button rendered inside expanded section STRICTLY for attending users */}
+                    {/* Check In Button rendered inside expanded section strictly for attending users */}
                     {isAttending && (
                       <button
                         onClick={() => handleCheckIn(attendee)}
