@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Share2, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -14,6 +14,8 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const { attendees, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
+  const [filterGroup, setFilterGroup] = useState('all');
+  const [filterTable, setFilterTable] = useState('all');
   const [filterAttendance, setFilterAttendance] = useState<'all' | 'attending' | 'not-attending'>('all');
   const [sortBy, setSortBy] = useState<SortOption>('date-desc');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     }
   };
 
-  // Normalized Attendance Check (Strict check for Boolean or Google Sheets String)
+  // Normalized Attendance Check
   const checkWillAttend = (a: Attendee): boolean => {
     if (a.willAttend === false) return false;
     if (a.willAttend === true) return true;
@@ -74,8 +76,12 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return true;
   };
 
-  const departments = [...new Set(attendees.map(a => a.department))];
+  // Dynamic filter dropdown lists
+  const departments = [...new Set(attendees.map(a => a.department).filter(Boolean))];
+  const groups = [...new Set(attendees.map(a => a.group).filter(Boolean))];
+  const tables = [...new Set(attendees.map(a => a.tableNo).filter(Boolean))];
 
+  // Filtering
   const filtered = attendees.filter(a => {
     const isAttending = checkWillAttend(a);
 
@@ -83,18 +89,23 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       a.name.toLowerCase().includes(search.toLowerCase()) || 
       a.email.toLowerCase().includes(search.toLowerCase()) || 
       a.department.toLowerCase().includes(search.toLowerCase()) ||
+      (a.group && a.group.toLowerCase().includes(search.toLowerCase())) ||
+      (a.tableNo && a.tableNo.toLowerCase().includes(search.toLowerCase())) ||
       (a.reason && a.reason.toLowerCase().includes(search.toLowerCase()));
       
     const matchesDept = filterDept === 'all' || a.department === filterDept;
+    const matchesGroup = filterGroup === 'all' || a.group === filterGroup;
+    const matchesTable = filterTable === 'all' || a.tableNo === filterTable;
 
     const matchesAttendance = 
       filterAttendance === 'all' ||
       (filterAttendance === 'attending' && isAttending) ||
       (filterAttendance === 'not-attending' && !isAttending);
 
-    return matchesSearch && matchesDept && matchesAttendance;
+    return matchesSearch && matchesDept && matchesGroup && matchesTable && matchesAttendance;
   });
 
+  // Sorting
   const sorted = [...filtered].sort((a, b) => {
     switch (sortBy) {
       case 'name-asc':
@@ -179,6 +190,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
       {/* Filters Bar */}
       <div className="space-y-3">
+        {/* Attendance Status Tabs */}
         <div className="flex bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit">
           <button
             onClick={() => setFilterAttendance('all')}
@@ -212,42 +224,72 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-          <div className="relative sm:col-span-6">
+        {/* Filter & Search Dropdowns Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+          {/* Search Box */}
+          <div className="relative sm:col-span-12 md:col-span-4">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <input 
               type="text" 
-              placeholder="Search by name, email, dept, or reason..." 
+              placeholder="Search name, dept, group, table..." 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm" 
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm" 
             />
           </div>
 
-          <div className="relative sm:col-span-3">
-            <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          {/* Department Filter */}
+          <div className="relative sm:col-span-4 md:col-span-2">
+            <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
               value={filterDept} 
               onChange={e => setFilterDept(e.target.value)} 
-              className="w-full pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm appearance-none cursor-pointer"
+              className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
             >
-              <option value="all">All Dept/Office</option>
+              <option value="all">All Depts</option>
               {departments.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
 
-          <div className="relative sm:col-span-3">
-            <ArrowUpDown size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          {/* Group Filter */}
+          <div className="relative sm:col-span-4 md:col-span-2">
+            <Users2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <select 
+              value={filterGroup} 
+              onChange={e => setFilterGroup(e.target.value)} 
+              className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+            >
+              <option value="all">All Groups</option>
+              {groups.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+
+          {/* Table No. Filter */}
+          <div className="relative sm:col-span-4 md:col-span-2">
+            <LayoutGrid size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+            <select 
+              value={filterTable} 
+              onChange={e => setFilterTable(e.target.value)} 
+              className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
+            >
+              <option value="all">All Tables</option>
+              {tables.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative sm:col-span-12 md:col-span-2">
+            <ArrowUpDown size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
               value={sortBy} 
               onChange={e => setSortBy(e.target.value as SortOption)} 
-              className="w-full pl-10 pr-8 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-sm appearance-none cursor-pointer"
+              className="w-full pl-9 pr-6 py-2 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 dark:text-white text-xs appearance-none cursor-pointer truncate"
             >
-              <option value="date-desc">Registered (Newest)</option>
-              <option value="date-asc">Registered (Oldest)</option>
-              <option value="name-asc">Alphabetical (A–Z)</option>
-              <option value="name-desc">Alphabetical (Z–A)</option>
-              <option value="office-asc">By Office/Department</option>
+              <option value="date-desc">Newest First</option>
+              <option value="date-asc">Oldest First</option>
+              <option value="name-asc">A–Z</option>
+              <option value="name-desc">Z–A</option>
+              <option value="office-asc">By Department</option>
             </select>
           </div>
         </div>
@@ -284,8 +326,16 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(attendee.id)}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800 dark:text-white truncate">{attendee.name}</h3>
-                      
-                      {/* Badge */}
+
+                      {/* Prominent High-Visibility Table Badge */}
+                      {attendee.tableNo && (
+                        <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/90 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80 shadow-sm flex items-center gap-1">
+                          <LayoutGrid size={12} className="shrink-0 text-amber-600 dark:text-amber-400" />
+                          {attendee.tableNo.toLowerCase().includes('table') ? attendee.tableNo : `Table ${attendee.tableNo}`}
+                        </span>
+                      )}
+
+                      {/* Attendance Intention Badge */}
                       <div className="relative inline-block">
                         <span 
                           onClick={(e) => {
@@ -339,7 +389,14 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       )}
                     </div>
 
-                    <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 truncate">{attendee.department} · {attendee.position}</p>
+                    <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 truncate flex items-center gap-1.5">
+                      <span>{attendee.department} · {attendee.position}</span>
+                      {attendee.group && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-medium text-[11px] border border-blue-100 dark:border-blue-900">
+                          <Users2 size={11} /> {attendee.group}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">{attendee.email || 'No email'} · {attendee.phone || 'No phone'}</p>
                   </div>
 
@@ -374,6 +431,14 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                   <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
                       <div>
+                        <span className="font-medium text-gray-700 dark:text-slate-300">Group Name: </span>
+                        {attendee.group || 'N/A'}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700 dark:text-slate-300">Assigned Table: </span>
+                        {attendee.tableNo || 'N/A'}
+                      </div>
+                      <div>
                         <span className="font-medium text-gray-700 dark:text-slate-300">Registration Date: </span>
                         {attendee.createdAt ? new Date(attendee.createdAt).toLocaleString() : 'N/A'}
                       </div>
@@ -383,7 +448,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       </div>
                     </div>
 
-                    {/* Check In Button rendered inside expanded section STRICTLY for attending users */}
+                    {/* Check In Button rendered inside expanded section strictly for attending users */}
                     {isAttending && (
                       <button
                         onClick={() => handleCheckIn(attendee)}
