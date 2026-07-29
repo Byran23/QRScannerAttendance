@@ -8,7 +8,7 @@ import {
   ReactNode,
 } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Attendee, AttendanceRecord, EventConfig } from './types';
+import { Attendee, AttendanceRecord, EventConfig, FormFieldsConfig } from './types';
 import { isGoogleSheetsConfigured, GOOGLE_SHEETS_CONFIG } from './googleSheets';
 
 // ─── localStorage keys ───
@@ -30,6 +30,14 @@ function lsGetSet(key: string): Set<string> {
 function lsSetSet(key: string, set: Set<string>) {
   localStorage.setItem(key, JSON.stringify([...set]));
 }
+
+// Default Form Field Requirements
+const DEFAULT_FORM_FIELDS: FormFieldsConfig = {
+  departmentRequired: true,
+  positionRequired: true,
+  phoneRequired: true,
+  emailRequired: false,
+};
 
 // ─── Helper to parse willAttend string/boolean ───
 export function parseWillAttend(value: unknown): boolean {
@@ -99,9 +107,24 @@ async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceReco
     tableNo: String(a.tableNo || ''),
   }));
 
+  // Parse Form Field Configs safely from GS
+  let parsedFormFields: FormFieldsConfig = DEFAULT_FORM_FIELDS;
+  if (data.eventConfig?.formFields) {
+    if (typeof data.eventConfig.formFields === 'string') {
+      try {
+        parsedFormFields = JSON.parse(data.eventConfig.formFields);
+      } catch {
+        parsedFormFields = DEFAULT_FORM_FIELDS;
+      }
+    } else {
+      parsedFormFields = { ...DEFAULT_FORM_FIELDS, ...data.eventConfig.formFields };
+    }
+  }
+
   const parsedConfig: EventConfig = {
     title: String(data.eventConfig?.title || ''),
     imageUrl: String(data.eventConfig?.imageUrl || ''),
+    formFields: parsedFormFields,
   };
 
   return {
@@ -132,9 +155,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [eventConfig, setEventConfig] = useState<EventConfig>(() => {
     try {
       const saved = localStorage.getItem(LS_EVENT_CONFIG);
-      return saved ? JSON.parse(saved) : { title: '', imageUrl: '' };
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          title: parsed.title || '',
+          imageUrl: parsed.imageUrl || '',
+          formFields: { ...DEFAULT_FORM_FIELDS, ...parsed.formFields },
+        };
+      }
+      return { title: '', imageUrl: '', formFields: DEFAULT_FORM_FIELDS };
     } catch {
-      return { title: '', imageUrl: '' };
+      return { title: '', imageUrl: '', formFields: DEFAULT_FORM_FIELDS };
     }
   });
   const [loading, setLoading] = useState(true);
@@ -163,8 +194,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setAttendees(filtered.attendees);
         setRecords(filtered.records);
         if (data.eventConfig) {
-          setEventConfig(data.eventConfig);
-          localStorage.setItem(LS_EVENT_CONFIG, JSON.stringify(data.eventConfig));
+          const mergedConfig: EventConfig = {
+            ...data.eventConfig,
+            formFields: { ...DEFAULT_FORM_FIELDS, ...data.eventConfig.formFields },
+          };
+          setEventConfig(mergedConfig);
+          localStorage.setItem(LS_EVENT_CONFIG, JSON.stringify(mergedConfig));
         }
         lsSet(LS_ATTENDEES, filtered.attendees);
         lsSet(LS_RECORDS, filtered.records);
@@ -360,10 +395,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [todayRecords]
   );
 
-  // ── Event Config Function ──
+  // ── Event Config Function (Preserves & Deep-merges formFields) ──
   const updateEventConfigFn = useCallback(async (config: EventConfig) => {
-    setEventConfig(config);
-    localStorage.setItem(LS_EVENT_CONFIG, JSON.stringify(config));
+    setEventConfig(prev => {
+      const mergedConfig: EventConfig = {
+        ...prev,
+        ...config,
+        formFields: {
+          ...DEFAULT_FORM_FIELDS,
+          ...prev?.formFields,
+          ...config?.formFields,
+        }
+      };
+      localStorage.setItem(LS_EVENT_CONFIG, JSON.stringify(mergedConfig));
+      return mergedConfig;
+    });
 
     if (synced) {
       try {
