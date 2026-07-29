@@ -6,7 +6,7 @@
  * Your Google Sheet must have three sheets (tabs):
  * - "Attendees" (11 columns: id, name, email, department, position, phone, createdAt, willAttend, reason, group, tableNo)
  * - "Records" (7 columns: id, attendeeId, attendeeName, attendeeEmail, attendeeDepartment, timestamp, type)
- * - "AdminPins" (pin, label, active, ..., Col J: Event Title, Col K: Header Image URL)
+ * - "AdminPins" (pin, label, active, ..., Col J: Event Title, Col K: Header Image URL, Col L: Form Fields Config)
  */
 
 function getSheet(name) {
@@ -102,14 +102,36 @@ function getActivePins() {
   return pins;
 }
 
-// Fetch Event Title (Col J / Row 2) and Header Image URL (Col K / Row 2) from AdminPins tab
+// Fetch Event Title (Col J2), Header Image URL (Col K2), and Form Fields JSON (Col L2) from AdminPins tab
 function getEventConfig(sheet) {
+  const defaultFields = {
+    departmentRequired: true,
+    positionRequired: true,
+    phoneRequired: true,
+    emailRequired: false
+  };
+
   try {
     const title = sheet.getRange("J2").getValue() || "";
     const imageUrl = sheet.getRange("K2").getValue() || "";
-    return { title: String(title), imageUrl: String(imageUrl) };
+    const formFieldsRaw = sheet.getRange("L2").getValue() || "";
+
+    let formFields = defaultFields;
+    if (formFieldsRaw) {
+      try {
+        formFields = typeof formFieldsRaw === 'string' ? JSON.parse(formFieldsRaw) : formFieldsRaw;
+      } catch (e) {
+        formFields = defaultFields;
+      }
+    }
+
+    return { 
+      title: String(title), 
+      imageUrl: String(imageUrl),
+      formFields: formFields
+    };
   } catch (e) {
-    return { title: "", imageUrl: "" };
+    return { title: "", imageUrl: "", formFields: defaultFields };
   }
 }
 
@@ -127,7 +149,7 @@ function doGet(e) {
         success: true,
         attendees: attendeesSheet ? sheetToObjects(attendeesSheet) : [],
         records: recordsSheet ? sheetToObjects(recordsSheet) : [],
-        eventConfig: adminPinsSheet ? getEventConfig(adminPinsSheet) : { title: '', imageUrl: '' },
+        eventConfig: adminPinsSheet ? getEventConfig(adminPinsSheet) : { title: '', imageUrl: '', formFields: {} },
       };
     }
 
@@ -162,6 +184,11 @@ function doPost(e) {
 
       sheet.getRange("J2").setValue(config.title || "");
       sheet.getRange("K2").setValue(config.imageUrl || "");
+      
+      // Save form field requirements as JSON string into Column L2
+      if (config.formFields) {
+        sheet.getRange("L2").setValue(JSON.stringify(config.formFields));
+      }
 
       result.eventConfig = config;
     }
