@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid, X, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid, X, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -158,8 +158,46 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     }
   };
 
+  const totalAttendees = attendees.length;
   const totalAttending = attendees.filter(a => checkWillAttend(a)).length;
   const totalNotAttending = attendees.filter(a => !checkWillAttend(a)).length;
+
+  // ─── Dynamic Status Bar Calculations ───
+  const getDynamicBarData = () => {
+    const displayedCount = filtered.length;
+    const totalBenchmark = totalAttendees;
+    const pct = totalBenchmark > 0 ? Math.round((displayedCount / totalBenchmark) * 100) : 0;
+
+    switch (filterAttendance) {
+      case 'attending':
+        return {
+          label: 'Attending RSVP Rate',
+          count: displayedCount,
+          total: totalBenchmark,
+          pct,
+          colorClass: 'from-emerald-500 to-teal-500',
+        };
+      case 'not-attending':
+        return {
+          label: 'Non-Attendance Rate',
+          count: displayedCount,
+          total: totalBenchmark,
+          pct,
+          colorClass: 'from-rose-500 to-red-500',
+        };
+      case 'all':
+      default:
+        return {
+          label: 'Filtered Attendees Ratio',
+          count: displayedCount,
+          total: totalBenchmark,
+          pct,
+          colorClass: 'from-blue-500 to-orange-500',
+        };
+    }
+  };
+
+  const activeBarData = getDynamicBarData();
 
   const toggleExpand = (id: string) => {
     setExpandedAttendeeId(prev => prev === id ? null : id);
@@ -192,7 +230,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       </div>
 
-      {/* Toggleable Registration Link Banner (No Share Button) */}
+      {/* Toggleable Registration Link Banner */}
       {showRegistrationBanner && (
         <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 transition-all animate-fade-in">
           <div className="flex items-center justify-between gap-3">
@@ -254,6 +292,45 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
           </button>
         </div>
 
+        {/* Dynamic Status Bar */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-800 transition-all">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-800 dark:text-white text-xs">
+                {activeBarData.label}
+              </h3>
+              {(filterAttendance !== 'all' || filterDept !== 'all' || filterGroup !== 'all' || filterTable !== 'all' || search) && (
+                <button 
+                  onClick={() => {
+                    setFilterAttendance('all');
+                    setFilterDept('all');
+                    setFilterGroup('all');
+                    setFilterTable('all');
+                    setSearch('');
+                  }} 
+                  className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md"
+                >
+                  <RotateCcw size={10} /> Reset Filters
+                </button>
+              )}
+            </div>
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+              {activeBarData.pct}%
+            </span>
+          </div>
+
+          <div className="relative w-full h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div 
+              className={`absolute top-0 left-0 h-full bg-gradient-to-r ${activeBarData.colorClass} rounded-full transition-all duration-700 ease-out`} 
+              style={{ width: `${activeBarData.pct}%` }} 
+            />
+          </div>
+
+          <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5">
+            Showing {activeBarData.count} of {activeBarData.total} attendees ({activeBarData.pct}% of total registered)
+          </p>
+        </div>
+
         {/* Filter & Search Dropdowns Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
           {/* Search Box */}
@@ -268,7 +345,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             />
           </div>
 
-          {/* Department Filter (Alphabetical A-Z) */}
+          {/* Department Filter */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -281,7 +358,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Group Filter (Alphabetical A-Z) */}
+          {/* Group Filter */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <Users2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -294,7 +371,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Table No. Filter (Lowest to Highest) */}
+          {/* Table No. Filter */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <LayoutGrid size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
