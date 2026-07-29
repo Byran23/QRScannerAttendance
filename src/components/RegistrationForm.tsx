@@ -26,12 +26,23 @@ export default function RegistrationForm() {
 
   const sheetConfigured = isGoogleSheetsConfigured();
 
+  // Dynamic field requirement check helper
+  const isReq = (field: 'departmentRequired' | 'positionRequired' | 'phoneRequired' | 'emailRequired') => {
+    if (eventConfig?.formFields && eventConfig.formFields[field] !== undefined) {
+      return !!eventConfig.formFields[field];
+    }
+    // Fallback defaults if configuration is unset
+    if (field === 'emailRequired') return false;
+    return true; // department, position, phone default to required
+  };
+
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = 'Full name is required';
-    if (!form.department.trim()) errs.department = 'Department/Office is required';
-    if (!form.position.trim()) errs.position = 'Position is required';
-    if (!form.phone.trim()) errs.phone = 'Phone number is required';
+    if (isReq('departmentRequired') && !form.department.trim()) errs.department = 'Department/Office is required';
+    if (isReq('positionRequired') && !form.position.trim()) errs.position = 'Position is required';
+    if (isReq('phoneRequired') && !form.phone.trim()) errs.phone = 'Phone number is required';
+    if (isReq('emailRequired') && !form.email.trim()) errs.email = 'Email address is required';
     
     if (form.willAttend === 'no' && !form.reason.trim()) {
       errs.reason = 'Please state your reason for not attending';
@@ -55,8 +66,8 @@ export default function RegistrationForm() {
         department: form.department.trim(),
         position: form.position.trim(),
         phone: form.phone.trim(),
-        group: '',   // Admin-managed field
-        tableNo: '', // Admin-managed field
+        group: '',
+        tableNo: '',
         willAttend: form.willAttend === 'yes',
         reason: form.willAttend === 'no' ? form.reason.trim() : '',
       });
@@ -105,7 +116,7 @@ export default function RegistrationForm() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
       
-      {/* ─── Header Banner (Centered Title & Fully Visible Text) ─── */}
+      {/* ─── Header Banner ─── */}
       <header className="relative min-h-[140px] sm:min-h-[160px] w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center">
         {eventConfig?.imageUrl ? (
           <>
@@ -188,11 +199,56 @@ export default function RegistrationForm() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <Field label="Full Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} error={errors.name} placeholder="Juan Dela Cruz" required disabled={submitting} />
-                <Field label="Department/Office" value={form.department} onChange={v => setForm(f => ({ ...f, department: v }))} error={errors.department} placeholder="Sangguniang Panlalawigan Office" required disabled={submitting} />
-                <Field label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Legislative Staff" required disabled={submitting} />
-                <Field label="Phone Number" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} error={errors.phone} placeholder="+63 912 345 6789" required disabled={submitting} />
-                <Field label="Email (optional)" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" disabled={submitting} />
+                <Field 
+                  label="Full Name" 
+                  value={form.name} 
+                  onChange={v => setForm(f => ({ ...f, name: v }))} 
+                  error={errors.name} 
+                  placeholder="Juan Dela Cruz" 
+                  required 
+                  disabled={submitting} 
+                />
+
+                <Field 
+                  label={`Department/Office${!isReq('departmentRequired') ? ' (optional)' : ''}`} 
+                  value={form.department} 
+                  onChange={v => setForm(f => ({ ...f, department: v }))} 
+                  error={errors.department} 
+                  placeholder="Sangguniang Panlalawigan Office" 
+                  required={isReq('departmentRequired')} 
+                  disabled={submitting} 
+                />
+
+                <Field 
+                  label={`Position${!isReq('positionRequired') ? ' (optional)' : ''}`} 
+                  value={form.position} 
+                  onChange={v => setForm(f => ({ ...f, position: v }))} 
+                  error={errors.position} 
+                  placeholder="Legislative Staff" 
+                  required={isReq('positionRequired')} 
+                  disabled={submitting} 
+                />
+
+                <Field 
+                  label={`Phone Number${!isReq('phoneRequired') ? ' (optional)' : ''}`} 
+                  value={form.phone} 
+                  onChange={v => setForm(f => ({ ...f, phone: v }))} 
+                  error={errors.phone} 
+                  placeholder="+63 912 345 6789" 
+                  required={isReq('phoneRequired')} 
+                  disabled={submitting} 
+                />
+
+                <Field 
+                  label={`Email Address${!isReq('emailRequired') ? ' (optional)' : ''}`} 
+                  type="email" 
+                  value={form.email} 
+                  onChange={v => setForm(f => ({ ...f, email: v }))} 
+                  error={errors.email} 
+                  placeholder="juan@company.com" 
+                  required={isReq('emailRequired')} 
+                  disabled={submitting} 
+                />
 
                 <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
                   <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
