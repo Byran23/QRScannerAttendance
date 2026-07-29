@@ -11,7 +11,7 @@ interface AttendeeListProps {
 type SortOption = 'name-asc' | 'name-desc' | 'office-asc' | 'date-desc' | 'date-asc';
 
 export default function AttendeeList({ onNavigate }: AttendeeListProps) {
-  const { attendees, todayRecords, updateAttendee, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
+  const { attendees, updateAttendee, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
   const [filterGroup, setFilterGroup] = useState('all');
@@ -68,60 +68,12 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return true;
   };
 
-  // Helper to check live check-in status
+  // Live Check-in Status helper
   const getStatus = (attendee: Attendee) => {
     const lastAction = getAttendeeLastAction(attendee.id);
     if (!lastAction) return 'absent';
     return lastAction.type === 'check-in' ? 'present' : 'checked-out';
   };
-
-  // ─── Metrics Calculations ───
-  const totalRegistered = attendees.length;
-  const attendingList = attendees.filter(a => checkWillAttend(a));
-  const totalAttending = attendingList.length;
-  const totalNotAttending = attendees.filter(a => !checkWillAttend(a)).length;
-
-  // Live Check-in Counts for Present Users
-  const presentCount = attendingList.filter(a => getStatus(a) === 'present').length;
-
-  // Dynamic Status Bar Data Based on Active Tab Filter
-  const getDynamicStatusBarData = () => {
-    switch (filterAttendance) {
-      case 'attending':
-        const turnoutPct = totalAttending > 0 ? Math.round((presentCount / totalAttending) * 100) : 0;
-        return {
-          label: 'Turnout Rate (Present vs. Attending Pool)',
-          count: presentCount,
-          benchmark: totalAttending,
-          pct: turnoutPct,
-          colorClass: 'from-green-500 to-emerald-500',
-          subtext: `${presentCount} of ${totalAttending} attending members checked in today (${turnoutPct}%)`
-        };
-      case 'not-attending':
-        const declinePct = totalRegistered > 0 ? Math.round((totalNotAttending / totalRegistered) * 100) : 0;
-        return {
-          label: 'Non-Attendance Rate (Declined vs. Registered)',
-          count: totalNotAttending,
-          benchmark: totalRegistered,
-          pct: declinePct,
-          colorClass: 'from-rose-500 to-red-500',
-          subtext: `${totalNotAttending} of ${totalRegistered} registered attendees declined (${declinePct}%)`
-        };
-      case 'all':
-      default:
-        const rsvpYesPct = totalRegistered > 0 ? Math.round((totalAttending / totalRegistered) * 100) : 0;
-        return {
-          label: 'Overall RSVP Rate (Will Attend vs. Registered)',
-          count: totalAttending,
-          benchmark: totalRegistered,
-          pct: rsvpYesPct,
-          colorClass: 'from-blue-500 to-emerald-500',
-          subtext: `${totalAttending} Will Attend / ${totalNotAttending} Declined (${rsvpYesPct}% expected attendance)`
-        };
-    }
-  };
-
-  const statusBar = getDynamicStatusBarData();
 
   // Open Quick Edit Modal
   const openRsvpModal = (attendee: Attendee, e: React.MouseEvent) => {
@@ -182,6 +134,35 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return matchesSearch && matchesDept && matchesGroup && matchesTable && matchesAttendance;
   });
 
+  // ─── Dynamic Progress Bar Metrics ───
+  const totalFilteredCount = filtered.length;
+  const presentInFilteredCount = filtered.filter(a => getStatus(a) === 'present').length;
+  const filteredPct = totalFilteredCount > 0 ? Math.round((presentInFilteredCount / totalFilteredCount) * 100) : 0;
+
+  // Active Filter Description Label
+  const getFilterDescriptionLabel = () => {
+    const parts = [];
+    if (filterAttendance === 'attending') parts.push('Attending');
+    else if (filterAttendance === 'not-attending') parts.push('Not Attending');
+
+    if (filterDept !== 'all') parts.push(`Dept: ${filterDept}`);
+    if (filterGroup !== 'all') parts.push(`Group: ${filterGroup}`);
+    if (filterTable !== 'all') parts.push(`Table: ${filterTable}`);
+    if (search.trim()) parts.push(`Search: "${search.trim()}"`);
+
+    return parts.length > 0 ? parts.join(' · ') : 'All Registered Attendees';
+  };
+
+  const isAnyFilterActive = filterAttendance !== 'all' || filterDept !== 'all' || filterGroup !== 'all' || filterTable !== 'all' || search !== '';
+
+  const resetAllFilters = () => {
+    setFilterAttendance('all');
+    setFilterDept('all');
+    setFilterGroup('all');
+    setFilterTable('all');
+    setSearch('');
+  };
+
   // Sorting
   const sorted = [...filtered].sort((a, b) => {
     switch (sortBy) {
@@ -206,6 +187,9 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       checkInAttendee(attendee.id);
     }
   };
+
+  const totalAttending = attendees.filter(a => checkWillAttend(a)).length;
+  const totalNotAttending = attendees.filter(a => !checkWillAttend(a)).length;
 
   const toggleExpand = (id: string) => {
     setExpandedAttendeeId(prev => prev === id ? null : id);
@@ -264,28 +248,34 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       )}
 
-      {/* ─── Dynamic Status Bar Card ─── */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-800 transition-all">
-        <div className="flex justify-between items-center mb-2.5">
-          <span className="font-semibold text-gray-800 dark:text-white text-xs sm:text-sm">
-            {statusBar.label}
-          </span>
-          <span className="text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">
-            {statusBar.pct}%
+      {/* ─── Dynamic Filter Status & Turnout Progress Bar ─── */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-100 dark:border-slate-800 shadow-sm transition-all space-y-2.5">
+        <div className="flex justify-between items-center text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-gray-800 dark:text-slate-200 truncate">
+              {getFilterDescriptionLabel()}
+            </span>
+            {isAnyFilterActive && (
+              <button 
+                onClick={resetAllFilters}
+                className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md font-medium"
+              >
+                <RotateCcw size={11} /> Reset Filter
+              </button>
+            )}
+          </div>
+          <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0 ml-2">
+            {filteredPct}% Present ({presentInFilteredCount}/{totalFilteredCount})
           </span>
         </div>
 
-        {/* Dynamic Gradient Bar */}
+        {/* Dynamic Animated Status Bar */}
         <div className="relative w-full h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div 
-            className={`absolute top-0 left-0 h-full bg-gradient-to-r ${statusBar.colorClass} rounded-full transition-all duration-700 ease-out`} 
-            style={{ width: `${statusBar.pct}%` }} 
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-emerald-500 to-green-500 rounded-full transition-all duration-700 ease-out"
+            style={{ width: `${filteredPct}%` }}
           />
         </div>
-
-        <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-2">
-          {statusBar.subtext}
-        </p>
       </div>
 
       {/* Filters Bar */}
@@ -296,7 +286,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             onClick={() => setFilterAttendance('all')}
             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filterAttendance === 'all'
-                ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white shadow-sm font-semibold'
+                ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white shadow-sm'
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
             }`}
           >
@@ -306,7 +296,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             onClick={() => setFilterAttendance('attending')}
             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filterAttendance === 'attending'
-                ? 'bg-white dark:bg-slate-900 text-green-700 dark:text-green-400 shadow-sm font-semibold'
+                ? 'bg-white dark:bg-slate-900 text-green-700 dark:text-green-400 shadow-sm'
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
             }`}
           >
@@ -316,7 +306,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             onClick={() => setFilterAttendance('not-attending')}
             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filterAttendance === 'not-attending'
-                ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 shadow-sm font-semibold'
+                ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 shadow-sm'
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
             }`}
           >
@@ -338,7 +328,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             />
           </div>
 
-          {/* Department Filter */}
+          {/* Department Filter (Alphabetical A-Z) */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -351,7 +341,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Group Filter */}
+          {/* Group Filter (Alphabetical A-Z) */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <Users2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -364,7 +354,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Table No. Filter */}
+          {/* Table No. Filter (Lowest to Highest) */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <LayoutGrid size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
