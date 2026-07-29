@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake, Users2, LayoutGrid } from 'lucide-react';
+import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
 import { getInitials, getInitialsBg } from '../utils/initials';
@@ -14,8 +14,6 @@ export default function RegistrationForm() {
     department: '', 
     position: '', 
     phone: '',
-    group: '',
-    tableNo: '',
     willAttend: 'yes',
     reason: '' 
   });
@@ -56,8 +54,8 @@ export default function RegistrationForm() {
         department: form.department.trim(),
         position: form.position.trim(),
         phone: form.phone.trim(),
-        group: form.group.trim(),
-        tableNo: form.tableNo.trim(),
+        group: '',   // Admin-managed field
+        tableNo: '', // Admin-managed field
         willAttend: form.willAttend === 'yes',
         reason: form.willAttend === 'no' ? form.reason.trim() : '',
       });
@@ -106,34 +104,33 @@ export default function RegistrationForm() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
       
-      {/* ─── Header Banner (Synced with Dashboard Header) ─── */}
-      <header className="relative h-36 w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800">
+      {/* ─── Header Banner (Centered Title & Fully Visible Text) ─── */}
+      <header className="relative min-h-[140px] sm:min-h-[160px] w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center">
         {eventConfig?.imageUrl ? (
           <>
             <img
               src={eventConfig.imageUrl}
               alt="Event Header Logo"
-              className="w-full h-full object-cover opacity-85"
+              className="w-full h-full object-cover opacity-85 absolute inset-0"
               onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
           </>
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
         )}
 
-        <div className="absolute inset-0 max-w-lg mx-auto px-4 p-5 flex items-end justify-between text-white z-10">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-6 h-6 bg-white/20 backdrop-blur-md rounded-md flex items-center justify-center">
-                <ScanLine size={14} className="text-white" />
-              </div>
-              <span className="text-xs font-semibold tracking-wider text-blue-100 uppercase">AttendEase</span>
+        <div className="relative max-w-lg mx-auto px-4 py-6 text-center text-white z-10 flex flex-col items-center justify-center">
+          <div className="flex items-center justify-center gap-1.5 mb-1.5">
+            <div className="w-5 h-5 bg-white/20 backdrop-blur-md rounded flex items-center justify-center">
+              <ScanLine size={12} className="text-white" />
             </div>
-            <h1 className="text-lg font-extrabold text-white drop-shadow uppercase tracking-wide truncate max-w-xs">
-              {eventConfig?.title || 'Attendee Registration'}
-            </h1>
+            <span className="text-[11px] font-semibold tracking-wider text-blue-100 uppercase">AttendEase</span>
           </div>
+
+          <h1 className="text-base sm:text-xl font-extrabold text-white drop-shadow uppercase tracking-wide text-center leading-snug whitespace-normal break-words max-w-md">
+            {eventConfig?.title || 'Attendee Registration'}
+          </h1>
         </div>
       </header>
 
@@ -176,22 +173,9 @@ export default function RegistrationForm() {
                   <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5">
                     {form.department.trim() || 'Department'} · {form.position.trim() || 'Position'}
                   </p>
-                  
-                  {/* Group & Table Badges */}
-                  {(form.group.trim() || form.tableNo.trim()) && (
-                    <div className="flex items-center gap-1.5 mt-2">
-                      {form.group.trim() && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200 dark:border-blue-900">
-                          <Users2 size={10} /> {form.group.trim()}
-                        </span>
-                      )}
-                      {form.tableNo.trim() && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-700">
-                          <LayoutGrid size={10} /> {form.tableNo.trim().toLowerCase().includes('table') ? form.tableNo.trim() : `Table ${form.tableNo.trim()}`}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">
+                    {form.email.trim() || 'email'} · {form.phone.trim() || 'phone'}
+                  </p>
                 </div>
               </div>
 
@@ -206,13 +190,6 @@ export default function RegistrationForm() {
                 <Field label="Full Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} error={errors.name} placeholder="Juan Dela Cruz" required disabled={submitting} />
                 <Field label="Department/Office" value={form.department} onChange={v => setForm(f => ({ ...f, department: v }))} error={errors.department} placeholder="Sangguniang Panlalawigan Office" required disabled={submitting} />
                 <Field label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Legislative Staff" required disabled={submitting} />
-                
-                {/* Group Name & Assigned Table side-by-side */}
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Group Name (optional)" value={form.group} onChange={v => setForm(f => ({ ...f, group: v }))} placeholder="Group A" disabled={submitting} />
-                  <Field label="Assigned Table (optional)" value={form.tableNo} onChange={v => setForm(f => ({ ...f, tableNo: v }))} placeholder="Table 1" disabled={submitting} />
-                </div>
-
                 <Field label="Email (optional)" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" disabled={submitting} />
                 <Field label="Phone (optional)" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="+63 912 345 6789" disabled={submitting} />
 
@@ -324,14 +301,6 @@ export default function RegistrationForm() {
                   </div>
                   <h3 className="text-lg font-bold text-gray-800 dark:text-white">{createdAttendee.name}</h3>
                   <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{createdAttendee.department} · {createdAttendee.position}</p>
-                  
-                  {(createdAttendee.group || createdAttendee.tableNo) && (
-                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mt-1">
-                      {createdAttendee.group && `Group: ${createdAttendee.group}`} 
-                      {createdAttendee.group && createdAttendee.tableNo && ' · '} 
-                      {createdAttendee.tableNo && `Table: ${createdAttendee.tableNo}`}
-                    </p>
-                  )}
 
                   <div className="mt-3">
                     <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300">
