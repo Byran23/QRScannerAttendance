@@ -11,7 +11,7 @@ interface AttendeeListProps {
 type SortOption = 'name-asc' | 'name-desc' | 'office-asc' | 'date-desc' | 'date-asc';
 
 export default function AttendeeList({ onNavigate }: AttendeeListProps) {
-  const { attendees, updateAttendee, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
+  const { attendees, todayRecords, updateAttendee, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
   const [filterGroup, setFilterGroup] = useState('all');
@@ -67,6 +67,61 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     }
     return true;
   };
+
+  // Helper to check live check-in status
+  const getStatus = (attendee: Attendee) => {
+    const lastAction = getAttendeeLastAction(attendee.id);
+    if (!lastAction) return 'absent';
+    return lastAction.type === 'check-in' ? 'present' : 'checked-out';
+  };
+
+  // ─── Metrics Calculations ───
+  const totalRegistered = attendees.length;
+  const attendingList = attendees.filter(a => checkWillAttend(a));
+  const totalAttending = attendingList.length;
+  const totalNotAttending = attendees.filter(a => !checkWillAttend(a)).length;
+
+  // Live Check-in Counts for Present Users
+  const presentCount = attendingList.filter(a => getStatus(a) === 'present').length;
+
+  // Dynamic Status Bar Data Based on Active Tab Filter
+  const getDynamicStatusBarData = () => {
+    switch (filterAttendance) {
+      case 'attending':
+        const turnoutPct = totalAttending > 0 ? Math.round((presentCount / totalAttending) * 100) : 0;
+        return {
+          label: 'Turnout Rate (Present vs. Attending Pool)',
+          count: presentCount,
+          benchmark: totalAttending,
+          pct: turnoutPct,
+          colorClass: 'from-green-500 to-emerald-500',
+          subtext: `${presentCount} of ${totalAttending} attending members checked in today (${turnoutPct}%)`
+        };
+      case 'not-attending':
+        const declinePct = totalRegistered > 0 ? Math.round((totalNotAttending / totalRegistered) * 100) : 0;
+        return {
+          label: 'Non-Attendance Rate (Declined vs. Registered)',
+          count: totalNotAttending,
+          benchmark: totalRegistered,
+          pct: declinePct,
+          colorClass: 'from-rose-500 to-red-500',
+          subtext: `${totalNotAttending} of ${totalRegistered} registered attendees declined (${declinePct}%)`
+        };
+      case 'all':
+      default:
+        const rsvpYesPct = totalRegistered > 0 ? Math.round((totalAttending / totalRegistered) * 100) : 0;
+        return {
+          label: 'Overall RSVP Rate (Will Attend vs. Registered)',
+          count: totalAttending,
+          benchmark: totalRegistered,
+          pct: rsvpYesPct,
+          colorClass: 'from-blue-500 to-emerald-500',
+          subtext: `${totalAttending} Will Attend / ${totalNotAttending} Declined (${rsvpYesPct}% expected attendance)`
+        };
+    }
+  };
+
+  const statusBar = getDynamicStatusBarData();
 
   // Open Quick Edit Modal
   const openRsvpModal = (attendee: Attendee, e: React.MouseEvent) => {
@@ -146,58 +201,11 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
   const handleDelete = (id: string) => { deleteAttendee(id); setShowDeleteConfirm(null); };
 
-  const getStatus = (attendee: Attendee) => {
-    const lastAction = getAttendeeLastAction(attendee.id);
-    if (!lastAction) return 'absent';
-    return lastAction.type === 'check-in' ? 'present' : 'checked-out';
-  };
-
   const handleCheckIn = (attendee: Attendee) => {
     if (checkInAttendee) {
       checkInAttendee(attendee.id);
     }
   };
-
-  const totalAttendees = attendees.length;
-  const totalAttending = attendees.filter(a => checkWillAttend(a)).length;
-  const totalNotAttending = attendees.filter(a => !checkWillAttend(a)).length;
-
-  // ─── Dynamic Status Bar Calculations ───
-  const getDynamicBarData = () => {
-    const displayedCount = filtered.length;
-    const totalBenchmark = totalAttendees;
-    const pct = totalBenchmark > 0 ? Math.round((displayedCount / totalBenchmark) * 100) : 0;
-
-    switch (filterAttendance) {
-      case 'attending':
-        return {
-          label: 'Attending RSVP Rate',
-          count: displayedCount,
-          total: totalBenchmark,
-          pct,
-          colorClass: 'from-emerald-500 to-teal-500',
-        };
-      case 'not-attending':
-        return {
-          label: 'Non-Attendance Rate',
-          count: displayedCount,
-          total: totalBenchmark,
-          pct,
-          colorClass: 'from-rose-500 to-red-500',
-        };
-      case 'all':
-      default:
-        return {
-          label: 'Filtered Attendees Ratio',
-          count: displayedCount,
-          total: totalBenchmark,
-          pct,
-          colorClass: 'from-blue-500 to-orange-500',
-        };
-    }
-  };
-
-  const activeBarData = getDynamicBarData();
 
   const toggleExpand = (id: string) => {
     setExpandedAttendeeId(prev => prev === id ? null : id);
@@ -256,6 +264,30 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       )}
 
+      {/* ─── Dynamic Status Bar Card ─── */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-800 transition-all">
+        <div className="flex justify-between items-center mb-2.5">
+          <span className="font-semibold text-gray-800 dark:text-white text-xs sm:text-sm">
+            {statusBar.label}
+          </span>
+          <span className="text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">
+            {statusBar.pct}%
+          </span>
+        </div>
+
+        {/* Dynamic Gradient Bar */}
+        <div className="relative w-full h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div 
+            className={`absolute top-0 left-0 h-full bg-gradient-to-r ${statusBar.colorClass} rounded-full transition-all duration-700 ease-out`} 
+            style={{ width: `${statusBar.pct}%` }} 
+          />
+        </div>
+
+        <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-2">
+          {statusBar.subtext}
+        </p>
+      </div>
+
       {/* Filters Bar */}
       <div className="space-y-3">
         {/* Attendance Status Tabs */}
@@ -264,7 +296,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             onClick={() => setFilterAttendance('all')}
             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filterAttendance === 'all'
-                ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white shadow-sm font-semibold'
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
             }`}
           >
@@ -274,7 +306,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             onClick={() => setFilterAttendance('attending')}
             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filterAttendance === 'attending'
-                ? 'bg-white dark:bg-slate-900 text-green-700 dark:text-green-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-green-700 dark:text-green-400 shadow-sm font-semibold'
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
             }`}
           >
@@ -284,51 +316,12 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             onClick={() => setFilterAttendance('not-attending')}
             className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
               filterAttendance === 'not-attending'
-                ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 shadow-sm'
+                ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 shadow-sm font-semibold'
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
             }`}
           >
             Not Attending ({totalNotAttending})
           </button>
-        </div>
-
-        {/* Dynamic Status Bar */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-slate-800 transition-all">
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-800 dark:text-white text-xs">
-                {activeBarData.label}
-              </h3>
-              {(filterAttendance !== 'all' || filterDept !== 'all' || filterGroup !== 'all' || filterTable !== 'all' || search) && (
-                <button 
-                  onClick={() => {
-                    setFilterAttendance('all');
-                    setFilterDept('all');
-                    setFilterGroup('all');
-                    setFilterTable('all');
-                    setSearch('');
-                  }} 
-                  className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 hover:underline bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md"
-                >
-                  <RotateCcw size={10} /> Reset Filters
-                </button>
-              )}
-            </div>
-            <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
-              {activeBarData.pct}%
-            </span>
-          </div>
-
-          <div className="relative w-full h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div 
-              className={`absolute top-0 left-0 h-full bg-gradient-to-r ${activeBarData.colorClass} rounded-full transition-all duration-700 ease-out`} 
-              style={{ width: `${activeBarData.pct}%` }} 
-            />
-          </div>
-
-          <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5">
-            Showing {activeBarData.count} of {activeBarData.total} attendees ({activeBarData.pct}% of total registered)
-          </p>
         </div>
 
         {/* Filter & Search Dropdowns Grid */}
