@@ -149,22 +149,22 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   return (
     <div className="space-y-6">
       {/* ─── Compact Event Header Banner ─── */}
-      <div className="relative rounded-2xl overflow-hidden shadow-md group border border-gray-100 dark:border-slate-800 transition-all">
+      <div className="relative rounded-2xl overflow-hidden shadow-md group border border-gray-100 dark:border-slate-800 transition-all min-h-[140px] sm:min-h-[150px] flex items-center justify-center">
         {eventConfig?.imageUrl ? (
-          <div className="relative h-32 sm:h-36 w-full overflow-hidden bg-slate-900">
+          <>
             <img 
               src={eventConfig.imageUrl} 
               alt="Event Header" 
-              className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-500 absolute inset-0"
               onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
-          </div>
+          </>
         ) : (
-          <div className="h-32 sm:h-36 w-full bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
         )}
 
-        <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between text-white z-10">
+        <div className="relative inset-0 p-4 sm:p-5 flex flex-col justify-between text-white z-10 w-full h-full min-h-[140px]">
           <div className="flex justify-between items-start">
             <button
               onClick={() => {
@@ -179,15 +179,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </button>
           </div>
 
-          <div>
+          <div className="text-center my-auto">
             {eventConfig?.title ? (
-              <h1 className="text-lg sm:text-xl font-extrabold text-white drop-shadow-md uppercase tracking-wide truncate">
+              <h1 className="text-base sm:text-xl font-extrabold text-white drop-shadow-md uppercase tracking-wide leading-snug whitespace-normal break-words max-w-xl mx-auto">
                 {eventConfig.title}
               </h1>
             ) : (
               <h1 className="text-xl font-bold drop-shadow">{greeting}!</h1>
             )}
-            <p className="text-blue-100 text-xs mt-0.5 drop-shadow flex items-center gap-1.5">
+            <p className="text-blue-100 text-xs mt-1 drop-shadow flex items-center justify-center gap-1.5">
               <span>{greeting}</span> · <span>{dateStr}</span>
             </p>
           </div>

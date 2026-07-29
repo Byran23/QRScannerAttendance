@@ -20,14 +20,17 @@ export interface Attendee {
 }
 
 // ─── Attendance Scan Record (Synced with Records Sheet) ───
-export interface AttendanceRecord {
-  id: string;
-  attendeeId: string;
-  attendeeName: string;
-  attendeeEmail: string;
-  attendeeDepartment: string;
-  timestamp: string;
-  type: 'check-in' | 'check-out';
+export interface RequiredFieldsConfig {
+  email?: boolean;
+  phone?: boolean;
+  department?: boolean;
+  position?: boolean;
+}
+
+export interface EventConfig {
+  title: string;
+  imageUrl: string;
+  requiredFields?: RequiredFieldsConfig;
 }
 
 // ─── Page Navigation Routes ───

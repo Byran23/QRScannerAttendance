@@ -105,7 +105,7 @@ export default function RegistrationForm() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
       
-      {/* ─── Header Banner ─── */}
+      {/* ─── Header Banner (Centered Title & Fully Visible Text) ─── */}
       <header className="relative min-h-[140px] sm:min-h-[160px] w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center">
         {eventConfig?.imageUrl ? (
           <>
