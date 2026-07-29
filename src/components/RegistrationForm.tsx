@@ -106,7 +106,7 @@ export default function RegistrationForm() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
       
-      {/* ─── Dynamic Header Banner (Synced with Dashboard) ─── */}
+      {/* ─── Header Banner (Synced with Dashboard Header) ─── */}
       <header className="relative h-36 w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800">
         {eventConfig?.imageUrl ? (
           <>
@@ -177,7 +177,7 @@ export default function RegistrationForm() {
                     {form.department.trim() || 'Department'} · {form.position.trim() || 'Position'}
                   </p>
                   
-                  {/* Preview Group and Table Badges */}
+                  {/* Group & Table Badges */}
                   {(form.group.trim() || form.tableNo.trim()) && (
                     <div className="flex items-center gap-1.5 mt-2">
                       {form.group.trim() && (
@@ -207,7 +207,7 @@ export default function RegistrationForm() {
                 <Field label="Department/Office" value={form.department} onChange={v => setForm(f => ({ ...f, department: v }))} error={errors.department} placeholder="Sangguniang Panlalawigan Office" required disabled={submitting} />
                 <Field label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Legislative Staff" required disabled={submitting} />
                 
-                {/* Side-by-side Group and Table Fields */}
+                {/* Group Name & Assigned Table side-by-side */}
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Group Name (optional)" value={form.group} onChange={v => setForm(f => ({ ...f, group: v }))} placeholder="Group A" disabled={submitting} />
                   <Field label="Assigned Table (optional)" value={form.tableNo} onChange={v => setForm(f => ({ ...f, tableNo: v }))} placeholder="Table 1" disabled={submitting} />
