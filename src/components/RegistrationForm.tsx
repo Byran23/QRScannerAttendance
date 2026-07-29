@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake } from 'lucide-react';
+import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake, Users2, LayoutGrid } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
 import { getInitials, getInitialsBg } from '../utils/initials';
@@ -7,13 +7,15 @@ import { Attendee } from '../types';
 import { isGoogleSheetsConfigured } from '../googleSheets';
 
 export default function RegistrationForm() {
-  const { addAttendee, synced } = useData();
+  const { addAttendee, synced, eventConfig } = useData();
   const [form, setForm] = useState({ 
     name: '', 
     email: '', 
     department: '', 
     position: '', 
     phone: '',
+    group: '',
+    tableNo: '',
     willAttend: 'yes',
     reason: '' 
   });
@@ -54,6 +56,8 @@ export default function RegistrationForm() {
         department: form.department.trim(),
         position: form.position.trim(),
         phone: form.phone.trim(),
+        group: form.group.trim(),
+        tableNo: form.tableNo.trim(),
         willAttend: form.willAttend === 'yes',
         reason: form.willAttend === 'no' ? form.reason.trim() : '',
       });
@@ -101,16 +105,34 @@ export default function RegistrationForm() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
-      <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-50">
-        <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-orange-500 rounded-lg flex items-center justify-center">
-              <ScanLine size={16} className="text-white" />
+      
+      {/* ─── Dynamic Header Banner (Synced with Dashboard) ─── */}
+      <header className="relative h-36 w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800">
+        {eventConfig?.imageUrl ? (
+          <>
+            <img
+              src={eventConfig.imageUrl}
+              alt="Event Header Logo"
+              className="w-full h-full object-cover opacity-85"
+              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+          </>
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
+        )}
+
+        <div className="absolute inset-0 max-w-lg mx-auto px-4 p-5 flex items-end justify-between text-white z-10">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-6 h-6 bg-white/20 backdrop-blur-md rounded-md flex items-center justify-center">
+                <ScanLine size={14} className="text-white" />
+              </div>
+              <span className="text-xs font-semibold tracking-wider text-blue-100 uppercase">AttendEase</span>
             </div>
-            <div>
-              <h1 className="font-bold text-gray-800 dark:text-white text-sm leading-tight">AttendEase</h1>
-              <p className="text-[9px] text-gray-400 dark:text-slate-500 leading-tight">Attendee Registration</p>
-            </div>
+            <h1 className="text-lg font-extrabold text-white drop-shadow uppercase tracking-wide truncate max-w-xs">
+              {eventConfig?.title || 'Attendee Registration'}
+            </h1>
           </div>
         </div>
       </header>
@@ -120,9 +142,6 @@ export default function RegistrationForm() {
           /* ─── Registration Form ─── */
           <div className="space-y-5">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Send size={28} className="text-white" />
-              </div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Register Attendance</h2>
               <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Fill in your details to confirm your attendance status</p>
             </div>
@@ -137,14 +156,16 @@ export default function RegistrationForm() {
             )}
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800">
-              <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl mb-5">
-                <div className={`w-12 h-12 rounded-full ${previewBg} flex items-center justify-center text-white text-lg font-bold transition-colors`}>
+              
+              {/* Preview Card */}
+              <div className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl mb-5">
+                <div className={`w-12 h-12 rounded-full ${previewBg} flex items-center justify-center text-white text-lg font-bold transition-colors shrink-0 mt-0.5`}>
                   {previewInitials}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-gray-700 dark:text-slate-300 text-sm truncate">{form.name.trim() || 'Your Name'}</p>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    <p className="font-semibold text-gray-800 dark:text-white text-sm truncate">{form.name.trim() || 'Your Name'}</p>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
                       form.willAttend === 'yes' 
                         ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' 
                         : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
@@ -155,9 +176,22 @@ export default function RegistrationForm() {
                   <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5">
                     {form.department.trim() || 'Department'} · {form.position.trim() || 'Position'}
                   </p>
-                  <p className="text-xs text-gray-400 dark:text-slate-500 truncate mt-0.5">
-                    {form.email.trim() || 'email'} · {form.phone.trim() || 'phone'}
-                  </p>
+                  
+                  {/* Preview Group and Table Badges */}
+                  {(form.group.trim() || form.tableNo.trim()) && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      {form.group.trim() && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-semibold text-[10px] border border-blue-200 dark:border-blue-900">
+                          <Users2 size={10} /> {form.group.trim()}
+                        </span>
+                      )}
+                      {form.tableNo.trim() && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-700">
+                          <LayoutGrid size={10} /> {form.tableNo.trim().toLowerCase().includes('table') ? form.tableNo.trim() : `Table ${form.tableNo.trim()}`}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -170,9 +204,16 @@ export default function RegistrationForm() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Field label="Full Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} error={errors.name} placeholder="Juan Dela Cruz" required disabled={submitting} />
-                <Field label="Email (optional)" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" disabled={submitting} />
                 <Field label="Department/Office" value={form.department} onChange={v => setForm(f => ({ ...f, department: v }))} error={errors.department} placeholder="Sangguniang Panlalawigan Office" required disabled={submitting} />
                 <Field label="Position" value={form.position} onChange={v => setForm(f => ({ ...f, position: v }))} error={errors.position} placeholder="Legislative Staff" required disabled={submitting} />
+                
+                {/* Side-by-side Group and Table Fields */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Group Name (optional)" value={form.group} onChange={v => setForm(f => ({ ...f, group: v }))} placeholder="Group A" disabled={submitting} />
+                  <Field label="Assigned Table (optional)" value={form.tableNo} onChange={v => setForm(f => ({ ...f, tableNo: v }))} placeholder="Table 1" disabled={submitting} />
+                </div>
+
+                <Field label="Email (optional)" type="email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} error={errors.email} placeholder="juan@company.com" disabled={submitting} />
                 <Field label="Phone (optional)" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="+63 912 345 6789" disabled={submitting} />
 
                 <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
@@ -283,7 +324,14 @@ export default function RegistrationForm() {
                   </div>
                   <h3 className="text-lg font-bold text-gray-800 dark:text-white">{createdAttendee.name}</h3>
                   <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{createdAttendee.department} · {createdAttendee.position}</p>
-                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{createdAttendee.email || 'No email'} · {createdAttendee.phone || 'No phone'}</p>
+                  
+                  {(createdAttendee.group || createdAttendee.tableNo) && (
+                    <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mt-1">
+                      {createdAttendee.group && `Group: ${createdAttendee.group}`} 
+                      {createdAttendee.group && createdAttendee.tableNo && ' · '} 
+                      {createdAttendee.tableNo && `Table: ${createdAttendee.tableNo}`}
+                    </p>
+                  )}
 
                   <div className="mt-3">
                     <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300">
@@ -372,7 +420,7 @@ function Field({ label, value, onChange, error, placeholder, type = 'text', requ
           error
             ? 'border-orange-300 dark:border-orange-700 focus:ring-orange-500 bg-orange-50 dark:bg-orange-950/30'
             : 'border-gray-200 dark:border-slate-700 focus:ring-blue-500 bg-white dark:bg-slate-800'
-        } dark:text-white dark:placeholder-slate-500`}
+        } dark:text-white dark:placeholder-slate-500 text-xs sm:text-sm`}
       />
       {error && <p className="text-orange-600 dark:text-orange-400 text-xs mt-1">{error}</p>}
     </div>
