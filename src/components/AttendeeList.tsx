@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid, X, Eye, EyeOff, RotateCcw, UserCheck } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid, X, Eye, EyeOff, RotateCcw, UserCheck, Settings } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -12,7 +12,7 @@ type SortOption = 'name-asc' | 'name-desc' | 'office-asc' | 'date-desc' | 'date-
 type AttendanceFilterOption = 'all' | 'attending' | 'not-attending' | 'present';
 
 export default function AttendeeList({ onNavigate }: AttendeeListProps) {
-  const { attendees, updateAttendee, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
+  const { attendees, updateAttendee, deleteAttendee, getAttendeeLastAction, checkInAttendee, eventConfig, updateEventConfig } = useData();
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('all');
   const [filterGroup, setFilterGroup] = useState('all');
@@ -26,6 +26,16 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
   // Registration Link Banner starts HIDDEN by default
   const [showRegistrationBanner, setShowRegistrationBanner] = useState(false);
+
+  // Field Requirements Config Modal State
+  const [isConfiguringFields, setIsConfiguringFields] = useState(false);
+  const [fieldSettings, setFieldSettings] = useState({
+    departmentRequired: eventConfig?.formFields?.departmentRequired ?? true,
+    positionRequired: eventConfig?.formFields?.positionRequired ?? true,
+    phoneRequired: eventConfig?.formFields?.phoneRequired ?? true,
+    emailRequired: eventConfig?.formFields?.emailRequired ?? false,
+  });
+  const [isSavingFields, setIsSavingFields] = useState(false);
 
   // Quick RSVP Editing Modal State
   const [editingRsvpAttendee, setEditingRsvpAttendee] = useState<Attendee | null>(null);
@@ -49,6 +59,17 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     }
+  };
+
+  const handleSaveFieldSettings = async () => {
+    setIsSavingFields(true);
+    await updateEventConfig({
+      title: eventConfig?.title || '',
+      imageUrl: eventConfig?.imageUrl || '',
+      formFields: fieldSettings,
+    });
+    setIsSavingFields(false);
+    setIsConfiguringFields(false);
   };
 
   // Normalized Attendance Check
@@ -137,7 +158,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return matchesSearch && matchesDept && matchesGroup && matchesTable && matchesAttendance;
   });
 
-  // ─── Dynamic Progress Bar Calculations ───
+  // Dynamic Progress Bar Calculations
   const getBarMetrics = () => {
     const totalRegistered = attendees.length;
 
@@ -248,18 +269,29 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       </div>
 
-      {/* Toggleable Registration Link Banner (Hidden by Default) */}
+      {/* Toggleable Registration Link Banner */}
       {showRegistrationBanner && (
-        <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 transition-all animate-fade-in">
+        <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 transition-all animate-fade-in space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <Link size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Registration Form</p>
-                <p className="text-[10px] text-blue-600 dark:text-blue-400 truncate">Share the link so attendees can self-register</p>
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 truncate">Configure requirements or copy the link for self-registration</p>
               </div>
             </div>
-            <div className="flex gap-2 shrink-0">
+
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Form Field Settings Gear Button */}
+              <button
+                onClick={() => setIsConfiguringFields(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-blue-200 dark:border-blue-800 shadow-sm"
+                title="Set Required Fields"
+              >
+                <Settings size={14} className="text-blue-600 dark:text-blue-400" />
+                Configure Fields
+              </button>
+
               <button
                 onClick={handleCopyLink}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -268,6 +300,90 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
               >
                 {linkCopied ? <Check size={14} /> : <Link size={14} />}
                 {linkCopied ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Field Requirements Configuration Modal ─── */}
+      {isConfiguringFields && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden p-6 space-y-4 animate-bounce-in border border-gray-100 dark:border-slate-800">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
+              <h3 className="font-bold text-gray-800 dark:text-white text-sm flex items-center gap-2">
+                <Settings size={16} className="text-blue-600 dark:text-blue-400" />
+                Form Field Requirements
+              </h3>
+              <button onClick={() => setIsConfiguringFields(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              Select which fields attendees are strictly required to fill up in the public form:
+            </p>
+
+            <div className="space-y-2.5 pt-1">
+              <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-xl cursor-not-allowed opacity-80">
+                <span className="text-xs font-semibold text-gray-700 dark:text-slate-200">Full Name</span>
+                <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Required (Fixed)</span>
+              </label>
+
+              <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-blue-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="text-xs font-medium text-gray-700 dark:text-slate-200">Department / Office</span>
+                <input
+                  type="checkbox"
+                  checked={fieldSettings.departmentRequired}
+                  onChange={e => setFieldSettings({ ...fieldSettings, departmentRequired: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-blue-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="text-xs font-medium text-gray-700 dark:text-slate-200">Position / Job Title</span>
+                <input
+                  type="checkbox"
+                  checked={fieldSettings.positionRequired}
+                  onChange={e => setFieldSettings({ ...fieldSettings, positionRequired: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-blue-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="text-xs font-medium text-gray-700 dark:text-slate-200">Phone Number</span>
+                <input
+                  type="checkbox"
+                  checked={fieldSettings.phoneRequired}
+                  onChange={e => setFieldSettings({ ...fieldSettings, phoneRequired: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-blue-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                <span className="text-xs font-medium text-gray-700 dark:text-slate-200">Email Address</span>
+                <input
+                  type="checkbox"
+                  checked={fieldSettings.emailRequired}
+                  onChange={e => setFieldSettings({ ...fieldSettings, emailRequired: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-800">
+              <button
+                onClick={() => setIsConfiguringFields(false)}
+                className="px-4 py-2 text-xs font-medium text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveFieldSettings}
+                disabled={isSavingFields}
+                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm"
+              >
+                {isSavingFields ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
           </div>
