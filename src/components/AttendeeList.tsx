@@ -137,10 +137,31 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     return matchesSearch && matchesDept && matchesGroup && matchesTable && matchesAttendance;
   });
 
-  // Dynamic Progress Bar Metrics
-  const totalFilteredCount = filtered.length;
-  const presentInFilteredCount = filtered.filter(a => getStatus(a) === 'present').length;
-  const filteredPct = totalFilteredCount > 0 ? Math.round((presentInFilteredCount / totalFilteredCount) * 100) : 0;
+  // ─── Dynamic Progress Bar Calculations ───
+  const getBarMetrics = () => {
+    const totalRegistered = attendees.length;
+
+    if (filterAttendance === 'not-attending') {
+      const notAttendingCount = filtered.length;
+      const pct = totalRegistered > 0 ? Math.round((notAttendingCount / totalRegistered) * 100) : 0;
+      return {
+        pct,
+        text: `${pct}% Not Attending (${notAttendingCount}/${totalRegistered} Registered)`,
+        barGradient: 'from-red-500 via-rose-500 to-pink-500'
+      };
+    }
+
+    const totalFiltered = filtered.length;
+    const presentInFiltered = filtered.filter(a => getStatus(a) === 'present').length;
+    const pct = totalFiltered > 0 ? Math.round((presentInFiltered / totalFiltered) * 100) : 0;
+    return {
+      pct,
+      text: `${pct}% Present (${presentInFiltered}/${totalFiltered})`,
+      barGradient: 'from-blue-500 via-emerald-500 to-green-500'
+    };
+  };
+
+  const barMetrics = getBarMetrics();
 
   // Active Filter Description Label
   const getFilterDescriptionLabel = () => {
@@ -270,15 +291,15 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             )}
           </div>
           <span className="font-bold text-blue-600 dark:text-blue-400 shrink-0 ml-2">
-            {filteredPct}% Present ({presentInFilteredCount}/{totalFilteredCount})
+            {barMetrics.text}
           </span>
         </div>
 
         {/* Dynamic Animated Status Bar */}
         <div className="relative w-full h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div 
-            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-emerald-500 to-green-500 rounded-full transition-all duration-700 ease-out"
-            style={{ width: `${filteredPct}%` }}
+            className={`absolute top-0 left-0 h-full bg-gradient-to-r ${barMetrics.barGradient} rounded-full transition-all duration-700 ease-out`}
+            style={{ width: `${barMetrics.pct}%` }}
           />
         </div>
       </div>
