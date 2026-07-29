@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid, X, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Search, Plus, QrCode, Edit, Trash2, Users, Filter, Link, Check, CheckCircle2, XCircle, ArrowUpDown, ChevronDown, ChevronUp, AlertCircle, LogIn, Users2, LayoutGrid, X, Eye, EyeOff, RotateCcw, UserCheck } from 'lucide-react';
 import { Page, Attendee } from '../types';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { useData } from '../DataContext';
@@ -9,6 +9,7 @@ interface AttendeeListProps {
 }
 
 type SortOption = 'name-asc' | 'name-desc' | 'office-asc' | 'date-desc' | 'date-asc';
+type AttendanceFilterOption = 'all' | 'attending' | 'not-attending' | 'present';
 
 export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const { attendees, updateAttendee, deleteAttendee, getAttendeeLastAction, checkInAttendee } = useData();
@@ -16,15 +17,15 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const [filterDept, setFilterDept] = useState('all');
   const [filterGroup, setFilterGroup] = useState('all');
   const [filterTable, setFilterTable] = useState('all');
-  const [filterAttendance, setFilterAttendance] = useState<'all' | 'attending' | 'not-attending'>('all');
+  const [filterAttendance, setFilterAttendance] = useState<AttendanceFilterOption>('all');
   const [sortBy, setSortBy] = useState<SortOption>('date-desc');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [expandedAttendeeId, setExpandedAttendeeId] = useState<string | null>(null);
   const [activeReasonTooltip, setActiveReasonTooltip] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // Toggle Visibility for Registration Link Banner
-  const [showRegistrationBanner, setShowRegistrationBanner] = useState(true);
+  // Registration Link Banner starts HIDDEN by default
+  const [showRegistrationBanner, setShowRegistrationBanner] = useState(false);
 
   // Quick RSVP Editing Modal State
   const [editingRsvpAttendee, setEditingRsvpAttendee] = useState<Attendee | null>(null);
@@ -113,6 +114,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   // Filtering
   const filtered = attendees.filter(a => {
     const isAttending = checkWillAttend(a);
+    const liveStatus = getStatus(a);
 
     const matchesSearch = 
       a.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -129,12 +131,13 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     const matchesAttendance = 
       filterAttendance === 'all' ||
       (filterAttendance === 'attending' && isAttending) ||
-      (filterAttendance === 'not-attending' && !isAttending);
+      (filterAttendance === 'not-attending' && !isAttending) ||
+      (filterAttendance === 'present' && liveStatus === 'present');
 
     return matchesSearch && matchesDept && matchesGroup && matchesTable && matchesAttendance;
   });
 
-  // ─── Dynamic Progress Bar Metrics ───
+  // Dynamic Progress Bar Metrics
   const totalFilteredCount = filtered.length;
   const presentInFilteredCount = filtered.filter(a => getStatus(a) === 'present').length;
   const filteredPct = totalFilteredCount > 0 ? Math.round((presentInFilteredCount / totalFilteredCount) * 100) : 0;
@@ -144,6 +147,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     const parts = [];
     if (filterAttendance === 'attending') parts.push('Attending');
     else if (filterAttendance === 'not-attending') parts.push('Not Attending');
+    else if (filterAttendance === 'present') parts.push('Marked Present');
 
     if (filterDept !== 'all') parts.push(`Dept: ${filterDept}`);
     if (filterGroup !== 'all') parts.push(`Group: ${filterGroup}`);
@@ -190,6 +194,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
   const totalAttending = attendees.filter(a => checkWillAttend(a)).length;
   const totalNotAttending = attendees.filter(a => !checkWillAttend(a)).length;
+  const totalPresentCount = attendees.filter(a => getStatus(a) === 'present').length;
 
   const toggleExpand = (id: string) => {
     setExpandedAttendeeId(prev => prev === id ? null : id);
@@ -202,7 +207,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         <div>
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Attendees</h2>
           <p className="text-gray-500 dark:text-slate-400 text-sm">
-            {attendees.length} registered · <span className="text-green-600 dark:text-green-400 font-medium">{totalAttending} attending</span> · <span className="text-red-600 dark:text-red-400 font-medium">{totalNotAttending} declined</span>
+            {attendees.length} registered · <span className="text-emerald-600 dark:text-emerald-400 font-medium">{totalPresentCount} present</span> · <span className="text-green-600 dark:text-green-400 font-medium">{totalAttending} attending</span> · <span className="text-red-600 dark:text-red-400 font-medium">{totalNotAttending} declined</span>
           </p>
         </div>
 
@@ -222,7 +227,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       </div>
 
-      {/* Toggleable Registration Link Banner */}
+      {/* Toggleable Registration Link Banner (Hidden by Default) */}
       {showRegistrationBanner && (
         <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 transition-all animate-fade-in">
           <div className="flex items-center justify-between gap-3">
@@ -248,7 +253,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       )}
 
-      {/* ─── Dynamic Filter Status & Turnout Progress Bar ─── */}
+      {/* Dynamic Filter Status & Turnout Progress Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-100 dark:border-slate-800 shadow-sm transition-all space-y-2.5">
         <div className="flex justify-between items-center text-xs">
           <div className="flex items-center gap-2">
@@ -280,11 +285,11 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
       {/* Filters Bar */}
       <div className="space-y-3">
-        {/* Attendance Status Tabs */}
-        <div className="flex bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit">
+        {/* Attendance Status Tabs (All, Attending, Not Attending, Present) */}
+        <div className="flex bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit overflow-x-auto">
           <button
             onClick={() => setFilterAttendance('all')}
-            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
               filterAttendance === 'all'
                 ? 'bg-white dark:bg-slate-900 text-gray-800 dark:text-white shadow-sm'
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
@@ -292,9 +297,21 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
           >
             All ({attendees.length})
           </button>
+          
+          <button
+            onClick={() => setFilterAttendance('present')}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 flex items-center justify-center gap-1 ${
+              filterAttendance === 'present'
+                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm font-semibold'
+                : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <UserCheck size={13} /> Present ({totalPresentCount})
+          </button>
+
           <button
             onClick={() => setFilterAttendance('attending')}
-            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
               filterAttendance === 'attending'
                 ? 'bg-white dark:bg-slate-900 text-green-700 dark:text-green-400 shadow-sm'
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
@@ -302,9 +319,10 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
           >
             Attending ({totalAttending})
           </button>
+
           <button
             onClick={() => setFilterAttendance('not-attending')}
-            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
               filterAttendance === 'not-attending'
                 ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 shadow-sm'
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
