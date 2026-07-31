@@ -26,36 +26,42 @@ export default function RegistrationForm() {
 
   const sheetConfigured = isGoogleSheetsConfigured();
 
-  // ─── Master List from 'Data Attendees' Tab ───
-  const masterList = dataAttendees || [];
+  // ─── Autocomplete Check & Options from 'Data Attendees' Tab ───
+  const suggestionsEnabled = eventConfig?.formFields?.enableSuggestions !== false;
+  const masterList = suggestionsEnabled ? (dataAttendees || []) : [];
 
   const nameOptions = useMemo(() => {
+    if (!suggestionsEnabled) return [];
     return [...new Set(masterList.map(a => a.name?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  }, [masterList]);
+  }, [masterList, suggestionsEnabled]);
 
   const departmentOptions = useMemo(() => {
+    if (!suggestionsEnabled) return [];
     return [...new Set(masterList.map(a => a.department?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  }, [masterList]);
+  }, [masterList, suggestionsEnabled]);
 
   const positionOptions = useMemo(() => {
+    if (!suggestionsEnabled) return [];
     return [...new Set(masterList.map(a => a.position?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  }, [masterList]);
+  }, [masterList, suggestionsEnabled]);
 
   // Handle name selection and auto-fill remaining fields
   const handleSelectName = (selectedName: string) => {
-    const matched = masterList.find(a => a.name?.toLowerCase().trim() === selectedName.toLowerCase().trim());
-    if (matched) {
-      setForm(prev => ({
-        ...prev,
-        name: selectedName,
-        email: matched.email || prev.email,
-        department: matched.department || prev.department,
-        position: matched.position || prev.position,
-        phone: matched.phone || prev.phone,
-      }));
-    } else {
-      setForm(prev => ({ ...prev, name: selectedName }));
+    if (suggestionsEnabled) {
+      const matched = masterList.find(a => a.name?.toLowerCase().trim() === selectedName.toLowerCase().trim());
+      if (matched) {
+        setForm(prev => ({
+          ...prev,
+          name: selectedName,
+          email: matched.email || prev.email,
+          department: matched.department || prev.department,
+          position: matched.position || prev.position,
+          phone: matched.phone || prev.phone,
+        }));
+        return;
+      }
     }
+    setForm(prev => ({ ...prev, name: selectedName }));
   };
 
   // Dynamic field requirement check helper
@@ -64,7 +70,7 @@ export default function RegistrationForm() {
       return !!eventConfig.formFields[field];
     }
     if (field === 'emailRequired') return false;
-    return true;
+    return true; // Department, Position, Phone default to required
   };
 
   const validate = () => {
@@ -183,7 +189,9 @@ export default function RegistrationForm() {
           <div className="space-y-5">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Register Attendance</h2>
-              <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Select or type your name to auto-fill details</p>
+              <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">
+                {suggestionsEnabled ? 'Select or type your name to auto-fill details' : 'Fill in your details to confirm attendance'}
+              </p>
             </div>
 
             {!sheetConfigured && (
@@ -230,13 +238,14 @@ export default function RegistrationForm() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Full Name with Custom Autocomplete & Auto-Fill */}
+                {/* Full Name Field */}
                 <AutocompleteField 
                   label="Full Name" 
                   value={form.name} 
                   onChange={v => setForm(f => ({ ...f, name: v }))}
                   onSelect={handleSelectName}
                   options={nameOptions}
+                  enabled={suggestionsEnabled}
                   error={errors.name} 
                   placeholder="Juan Dela Cruz" 
                   required 
@@ -244,13 +253,14 @@ export default function RegistrationForm() {
                   icon={<User size={14} className="text-blue-500" />}
                 />
 
-                {/* Department Field with Custom Autocomplete */}
+                {/* Department Field */}
                 <AutocompleteField 
                   label={`Department/Office${!isReq('departmentRequired') ? ' (optional)' : ''}`} 
                   value={form.department} 
                   onChange={v => setForm(f => ({ ...f, department: v }))} 
                   onSelect={v => setForm(f => ({ ...f, department: v }))}
                   options={departmentOptions}
+                  enabled={suggestionsEnabled}
                   error={errors.department} 
                   placeholder="Sangguniang Panlalawigan Office" 
                   required={isReq('departmentRequired')} 
@@ -258,13 +268,14 @@ export default function RegistrationForm() {
                   icon={<Building2 size={14} className="text-blue-500" />}
                 />
 
-                {/* Position Field with Custom Autocomplete */}
+                {/* Position Field */}
                 <AutocompleteField 
                   label={`Position${!isReq('positionRequired') ? ' (optional)' : ''}`} 
                   value={form.position} 
                   onChange={v => setForm(f => ({ ...f, position: v }))} 
                   onSelect={v => setForm(f => ({ ...f, position: v }))}
                   options={positionOptions}
+                  enabled={suggestionsEnabled}
                   error={errors.position} 
                   placeholder="Legislative Staff" 
                   required={isReq('positionRequired')} 
@@ -272,6 +283,7 @@ export default function RegistrationForm() {
                   icon={<Briefcase size={14} className="text-blue-500" />}
                 />
 
+                {/* Phone Number Field */}
                 <StandardField 
                   label={`Phone Number${!isReq('phoneRequired') ? ' (optional)' : ''}`} 
                   value={form.phone} 
@@ -282,6 +294,7 @@ export default function RegistrationForm() {
                   disabled={submitting} 
                 />
 
+                {/* Email Field */}
                 <StandardField 
                   label={`Email Address${!isReq('emailRequired') ? ' (optional)' : ''}`} 
                   type="email" 
@@ -473,20 +486,19 @@ export default function RegistrationForm() {
 
 // ─── Custom Floating Autocomplete Field Component ───
 function AutocompleteField({ 
-  label, value, onChange, onSelect, options, error, placeholder, required, disabled, icon 
+  label, value, onChange, onSelect, options, enabled, error, placeholder, required, disabled, icon 
 }: {
-  label: string; value: string; onChange: (v: string) => void; onSelect: (v: string) => void; options: string[]; error?: string; placeholder?: string; required?: boolean; disabled?: boolean; icon?: React.ReactNode;
+  label: string; value: string; onChange: (v: string) => void; onSelect: (v: string) => void; options: string[]; enabled: boolean; error?: string; placeholder?: string; required?: boolean; disabled?: boolean; icon?: React.ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filter options based on user input
   const filtered = useMemo(() => {
+    if (!enabled || !options.length) return [];
     if (!value.trim()) return options.slice(0, 8);
     return options.filter(opt => opt.toLowerCase().includes(value.toLowerCase().trim())).slice(0, 8);
-  }, [options, value]);
+  }, [options, value, enabled]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -508,9 +520,11 @@ function AutocompleteField({
         value={value}
         onChange={e => {
           onChange(e.target.value);
-          setIsOpen(true);
+          if (enabled) setIsOpen(true);
         }}
-        onFocus={() => setIsOpen(true)}
+        onFocus={() => {
+          if (enabled) setIsOpen(true);
+        }}
         placeholder={placeholder}
         disabled={disabled}
         className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
@@ -520,8 +534,8 @@ function AutocompleteField({
         } dark:text-white dark:placeholder-slate-500 text-xs sm:text-sm`}
       />
 
-      {/* Floating Suggestions Dropdown Menu */}
-      {isOpen && filtered.length > 0 && !disabled && (
+      {/* Dropdown Menu (Strictly hidden when enabled is false) */}
+      {isOpen && enabled && filtered.length > 0 && !disabled && (
         <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-50 max-h-52 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-800 animate-fade-in">
           {filtered.map((item, idx) => (
             <button
