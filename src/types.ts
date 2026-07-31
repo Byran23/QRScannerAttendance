@@ -26,6 +26,7 @@ export interface RequiredFieldsConfig {
   department?: boolean;
   position?: boolean;
   enableSuggestions?: boolean; // New toggle flag
+  preventDuplicateDevice?: boolean; // New toggle flag
 }
 
 export interface EventConfig {

@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake, User, Building2, Briefcase, Lock, ShieldAlert } from 'lucide-react';
+import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake, User, Building2, Briefcase, Lock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
 import { getInitials, getInitialsBg } from '../utils/initials';
@@ -25,27 +25,32 @@ export default function RegistrationForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdAttendee, setCreatedAttendee] = useState<Attendee | null>(null);
   
-  // ─── 1 Phone to 1 Entry Lockout Check ───
+  // Device Lock State
   const [alreadyRegisteredOnDevice, setAlreadyRegisteredOnDevice] = useState<Attendee | null>(null);
 
   const qrRef = useRef<HTMLDivElement>(null);
   const sheetConfigured = isGoogleSheetsConfigured();
 
-  // Check on mount if this phone/device already registered
-  useEffect(() => {
-    try {
-      const savedSubmission = localStorage.getItem(LS_DEVICE_REGISTERED_KEY);
-      if (savedSubmission) {
-        const parsed = JSON.parse(savedSubmission);
-        setAlreadyRegisteredOnDevice(parsed);
-      }
-    } catch (e) {
-      console.error('Failed to parse local device submission lock:', e);
-    }
-  }, []);
-
-  // ─── Autocomplete Check & Options from 'Data Attendees' Tab ───
+  // Admin Config Toggles
   const suggestionsEnabled = eventConfig?.formFields?.enableSuggestions !== false;
+  const preventDuplicateDevice = eventConfig?.formFields?.preventDuplicateDevice === true;
+
+  // Check if device is locked ONLY IF preventDuplicateDevice toggle is enabled
+  useEffect(() => {
+    if (preventDuplicateDevice) {
+      try {
+        const savedSubmission = localStorage.getItem(LS_DEVICE_REGISTERED_KEY);
+        if (savedSubmission) {
+          setAlreadyRegisteredOnDevice(JSON.parse(savedSubmission));
+        }
+      } catch (e) {
+        console.error('Failed to parse device submission lock:', e);
+      }
+    } else {
+      setAlreadyRegisteredOnDevice(null);
+    }
+  }, [preventDuplicateDevice]);
+
   const masterList = suggestionsEnabled ? (dataAttendees || []) : [];
 
   const nameOptions = useMemo(() => {
@@ -101,11 +106,13 @@ export default function RegistrationForm() {
       errs.reason = 'Please state your reason for not attending';
     }
 
-    // ── Check if Phone or Name already exists in attendees database ──
-    const normalizedPhone = form.phone.replace(/\D/g, '');
-    const phoneExists = attendees.some(a => a.phone && a.phone.replace(/\D/g, '') === normalizedPhone && normalizedPhone.length > 5);
-    if (phoneExists) {
-      errs.phone = 'This phone number has already submitted an entry.';
+    // Phone duplicate validation if lock is enabled
+    if (preventDuplicateDevice) {
+      const normalizedPhone = form.phone.replace(/\D/g, '');
+      const phoneExists = attendees.some(a => a.phone && a.phone.replace(/\D/g, '') === normalizedPhone && normalizedPhone.length > 5);
+      if (phoneExists) {
+        errs.phone = 'This phone number has already submitted an entry.';
+      }
     }
 
     setErrors(errs);
@@ -132,8 +139,10 @@ export default function RegistrationForm() {
         reason: form.willAttend === 'no' ? form.reason.trim() : '',
       });
 
-      // ─── Save Lockout to LocalStorage on this Device ───
-      localStorage.setItem(LS_DEVICE_REGISTERED_KEY, JSON.stringify(attendee));
+      // Save device lockout if toggle enabled
+      if (preventDuplicateDevice) {
+        localStorage.setItem(LS_DEVICE_REGISTERED_KEY, JSON.stringify(attendee));
+      }
 
       setCreatedAttendee(attendee);
       setSubmitted(true);
@@ -178,19 +187,15 @@ export default function RegistrationForm() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors font-sans">
       
-      {/* ─── Header Banner (Mobile-Optimized) ─── */}
-      <header className="relative w-full min-h-[160px] sm:min-h-[180px] bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center overflow-hidden">
+      {/* ─── Header Banner ─── */}
+      <header className="relative min-h-[160px] sm:min-h-[180px] w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center">
         {eventConfig?.imageUrl ? (
           <>
             <img
               src={eventConfig.imageUrl}
               alt="Event Header Logo"
-              className="absolute inset-0 w-full h-full object-cover object-center opacity-85 z-0"
-              crossOrigin="anonymous"
-              onError={(e) => { 
-                console.error("Failed to load header image:", eventConfig.imageUrl);
-                (e.target as HTMLElement).style.display = 'none'; 
-              }}
+              className="w-full h-full object-cover opacity-85 absolute inset-0 z-0"
+              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 z-0" />
           </>
@@ -214,8 +219,8 @@ export default function RegistrationForm() {
 
       <main className="max-w-lg mx-auto px-4 py-6">
         
-        {/* ─── DEVICE LOCK SCREEN: Show if phone already registered ─── */}
-        {alreadyRegisteredOnDevice && !submitted ? (
+        {/* ─── DEVICE LOCK SCREEN (Active strictly when preventDuplicateDevice is ON) ─── */}
+        {preventDuplicateDevice && alreadyRegisteredOnDevice && !submitted ? (
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 text-center space-y-4 animate-fade-in">
             <div className="w-14 h-14 bg-amber-50 dark:bg-amber-950/60 rounded-full flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
               <Lock size={30} />
@@ -224,7 +229,7 @@ export default function RegistrationForm() {
             <div>
               <h2 className="text-xl font-bold text-gray-800 dark:text-white">Device Submission Lock</h2>
               <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                This phone has already registered an entry for this event. Only 1 submission is allowed per device.
+                This device has already submitted a response for this event.
               </p>
             </div>
 
@@ -464,7 +469,7 @@ export default function RegistrationForm() {
             </div>
 
             <p className="text-center text-[11px] text-gray-400 dark:text-slate-500">
-              Only 1 registration entry is allowed per phone/device.
+              {preventDuplicateDevice ? 'Device submission limit is currently ENABLED by admin.' : 'Your response will be recorded for event management.'}
             </p>
           </div>
         ) : createdAttendee ? (

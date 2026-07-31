@@ -27,7 +27,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   // Registration Link Banner starts HIDDEN by default
   const [showRegistrationBanner, setShowRegistrationBanner] = useState(false);
 
-  // Field Requirements & Autocomplete Config Modal State
+  // Field Requirements, Suggestions & Security Config Modal State
   const [isConfiguringFields, setIsConfiguringFields] = useState(false);
   const [fieldSettings, setFieldSettings] = useState({
     departmentRequired: eventConfig?.formFields?.departmentRequired ?? true,
@@ -35,6 +35,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
     phoneRequired: eventConfig?.formFields?.phoneRequired ?? true,
     emailRequired: eventConfig?.formFields?.emailRequired ?? false,
     enableSuggestions: eventConfig?.formFields?.enableSuggestions ?? true,
+    preventDuplicateDevice: eventConfig?.formFields?.preventDuplicateDevice ?? false,
   });
   const [isSavingFields, setIsSavingFields] = useState(false);
 
@@ -69,6 +70,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       phoneRequired: eventConfig?.formFields?.phoneRequired ?? true,
       emailRequired: eventConfig?.formFields?.emailRequired ?? false,
       enableSuggestions: eventConfig?.formFields?.enableSuggestions ?? true,
+      preventDuplicateDevice: eventConfig?.formFields?.preventDuplicateDevice ?? false,
     });
     setIsConfiguringFields(true);
   };
@@ -255,7 +257,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 font-sans">
       {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -318,7 +320,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       )}
 
-      {/* ─── Field Requirements & Autocomplete Configuration Modal ─── */}
+      {/* ─── Field Requirements, Suggestions & Security Modal ─── */}
       {isConfiguringFields && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden p-6 space-y-4 animate-bounce-in border border-gray-100 dark:border-slate-800">
@@ -333,7 +335,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </div>
 
             <p className="text-xs text-gray-500 dark:text-slate-400">
-              Set required fields and toggle autocomplete behavior for the public registration form:
+              Set required fields, toggle autocomplete, or restrict device submissions for the public registration form:
             </p>
 
             <div className="space-y-2.5 pt-1">
@@ -382,7 +384,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                 />
               </label>
 
-              {/* Autocomplete Suggestions Toggle */}
+              {/* Toggle Autocomplete Suggestions */}
               <label className="flex items-center justify-between p-3 bg-blue-50/60 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 rounded-xl cursor-pointer hover:bg-blue-100/50 transition-colors mt-2">
                 <div>
                   <span className="text-xs font-semibold text-gray-800 dark:text-slate-200 block">
@@ -397,6 +399,24 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                   checked={fieldSettings.enableSuggestions}
                   onChange={e => setFieldSettings({ ...fieldSettings, enableSuggestions: e.target.checked })}
                   className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+
+              {/* Toggle Device Submission Limit */}
+              <label className="flex items-center justify-between p-3 bg-amber-50/60 dark:bg-amber-950/40 border border-amber-100 dark:border-amber-900 rounded-xl cursor-pointer hover:bg-amber-100/50 transition-colors mt-2">
+                <div>
+                  <span className="text-xs font-semibold text-gray-800 dark:text-slate-200 block">
+                    Limit 1 Entry Per Phone / Device
+                  </span>
+                  <span className="text-[10px] text-gray-500 dark:text-slate-400 block">
+                    Locks form after submission to prevent multiple entries from the same phone
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={fieldSettings.preventDuplicateDevice}
+                  onChange={e => setFieldSettings({ ...fieldSettings, preventDuplicateDevice: e.target.checked })}
+                  className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
                 />
               </label>
             </div>
