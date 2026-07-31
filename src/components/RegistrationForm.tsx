@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef } from 'react';
 import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
@@ -7,7 +7,7 @@ import { Attendee } from '../types';
 import { isGoogleSheetsConfigured } from '../googleSheets';
 
 export default function RegistrationForm() {
-  const { addAttendee, synced, eventConfig, dataAttendees } = useData();
+  const { addAttendee, synced, eventConfig } = useData();
   const [form, setForm] = useState({ 
     name: '', 
     email: '', 
@@ -26,46 +26,14 @@ export default function RegistrationForm() {
 
   const sheetConfigured = isGoogleSheetsConfigured();
 
-  // ─── Auto-Fill & Suggestions from 'Data Attendees' Master Tab ───
-  const masterList = dataAttendees || [];
-
-  const nameSuggestions = useMemo(() => {
-    return [...new Set(masterList.map(a => a.name?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  }, [masterList]);
-
-  const departmentSuggestions = useMemo(() => {
-    return [...new Set(masterList.map(a => a.department?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  }, [masterList]);
-
-  const positionSuggestions = useMemo(() => {
-    return [...new Set(masterList.map(a => a.position?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  }, [masterList]);
-
-  // Auto-fill other fields when selecting a matching name from 'Data Attendees'
-  const handleNameChange = (val: string) => {
-    setForm(prev => {
-      const matched = masterList.find(a => a.name?.toLowerCase().trim() === val.toLowerCase().trim());
-      if (matched) {
-        return {
-          ...prev,
-          name: val,
-          email: matched.email || prev.email,
-          department: matched.department || prev.department,
-          position: matched.position || prev.position,
-          phone: matched.phone || prev.phone,
-        };
-      }
-      return { ...prev, name: val };
-    });
-  };
-
   // Dynamic field requirement check helper
   const isReq = (field: 'departmentRequired' | 'positionRequired' | 'phoneRequired' | 'emailRequired') => {
     if (eventConfig?.formFields && eventConfig.formFields[field] !== undefined) {
       return !!eventConfig.formFields[field];
     }
+    // Fallback defaults if configuration is unset
     if (field === 'emailRequired') return false;
-    return true;
+    return true; // department, position, phone default to required
   };
 
   const validate = () => {
@@ -98,8 +66,8 @@ export default function RegistrationForm() {
         department: form.department.trim(),
         position: form.position.trim(),
         phone: form.phone.trim(),
-        group: '',   // Managed by admin
-        tableNo: '', // Managed by admin
+        group: '',
+        tableNo: '',
         willAttend: form.willAttend === 'yes',
         reason: form.willAttend === 'no' ? form.reason.trim() : '',
       });
@@ -146,7 +114,7 @@ export default function RegistrationForm() {
   const isAttending = createdAttendee?.willAttend !== false;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors font-sans">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
       
       {/* ─── Header Banner ─── */}
       <header className="relative min-h-[140px] sm:min-h-[160px] w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center">
@@ -184,7 +152,7 @@ export default function RegistrationForm() {
           <div className="space-y-5">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Register Attendance</h2>
-              <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Select or type your name to auto-fill details</p>
+              <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Fill in your details to confirm your attendance status</p>
             </div>
 
             {!sheetConfigured && (
@@ -231,24 +199,16 @@ export default function RegistrationForm() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Full Name with Autocomplete & Auto-fill from 'Data Attendees' */}
                 <Field 
                   label="Full Name" 
                   value={form.name} 
-                  onChange={handleNameChange} 
+                  onChange={v => setForm(f => ({ ...f, name: v }))} 
                   error={errors.name} 
                   placeholder="Juan Dela Cruz" 
                   required 
-                  disabled={submitting}
-                  list="name-suggestions-list"
+                  disabled={submitting} 
                 />
-                <datalist id="name-suggestions-list">
-                  {nameSuggestions.map(name => (
-                    <option key={name} value={name} />
-                  ))}
-                </datalist>
 
-                {/* Department Field with Master List Suggestions */}
                 <Field 
                   label={`Department/Office${!isReq('departmentRequired') ? ' (optional)' : ''}`} 
                   value={form.department} 
@@ -256,16 +216,9 @@ export default function RegistrationForm() {
                   error={errors.department} 
                   placeholder="Sangguniang Panlalawigan Office" 
                   required={isReq('departmentRequired')} 
-                  disabled={submitting}
-                  list="department-suggestions-list" 
+                  disabled={submitting} 
                 />
-                <datalist id="department-suggestions-list">
-                  {departmentSuggestions.map(dept => (
-                    <option key={dept} value={dept} />
-                  ))}
-                </datalist>
 
-                {/* Position Field with Master List Suggestions */}
                 <Field 
                   label={`Position${!isReq('positionRequired') ? ' (optional)' : ''}`} 
                   value={form.position} 
@@ -273,14 +226,8 @@ export default function RegistrationForm() {
                   error={errors.position} 
                   placeholder="Legislative Staff" 
                   required={isReq('positionRequired')} 
-                  disabled={submitting}
-                  list="position-suggestions-list" 
+                  disabled={submitting} 
                 />
-                <datalist id="position-suggestions-list">
-                  {positionSuggestions.map(pos => (
-                    <option key={pos} value={pos} />
-                  ))}
-                </datalist>
 
                 <Field 
                   label={`Phone Number${!isReq('phoneRequired') ? ' (optional)' : ''}`} 
@@ -481,8 +428,8 @@ export default function RegistrationForm() {
   );
 }
 
-function Field({ label, value, onChange, error, placeholder, type = 'text', required, disabled, list }: {
-  label: string; value: string; onChange: (v: string) => void; error?: string; placeholder?: string; type?: string; required?: boolean; disabled?: boolean; list?: string;
+function Field({ label, value, onChange, error, placeholder, type = 'text', required, disabled }: {
+  label: string; value: string; onChange: (v: string) => void; error?: string; placeholder?: string; type?: string; required?: boolean; disabled?: boolean;
 }) {
   return (
     <div>
@@ -495,7 +442,6 @@ function Field({ label, value, onChange, error, placeholder, type = 'text', requ
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
-        list={list}
         className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
           error
             ? 'border-orange-300 dark:border-orange-700 focus:ring-orange-500 bg-orange-50 dark:bg-orange-950/30'
