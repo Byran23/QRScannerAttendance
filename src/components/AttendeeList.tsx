@@ -27,13 +27,14 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   // Registration Link Banner starts HIDDEN by default
   const [showRegistrationBanner, setShowRegistrationBanner] = useState(false);
 
-  // Field Requirements Config Modal State
+  // Field Requirements & Autocomplete Config Modal State
   const [isConfiguringFields, setIsConfiguringFields] = useState(false);
   const [fieldSettings, setFieldSettings] = useState({
     departmentRequired: eventConfig?.formFields?.departmentRequired ?? true,
     positionRequired: eventConfig?.formFields?.positionRequired ?? true,
     phoneRequired: eventConfig?.formFields?.phoneRequired ?? true,
     emailRequired: eventConfig?.formFields?.emailRequired ?? false,
+    enableSuggestions: eventConfig?.formFields?.enableSuggestions ?? true,
   });
   const [isSavingFields, setIsSavingFields] = useState(false);
 
@@ -59,6 +60,17 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     }
+  };
+
+  const handleOpenConfigModal = () => {
+    setFieldSettings({
+      departmentRequired: eventConfig?.formFields?.departmentRequired ?? true,
+      positionRequired: eventConfig?.formFields?.positionRequired ?? true,
+      phoneRequired: eventConfig?.formFields?.phoneRequired ?? true,
+      emailRequired: eventConfig?.formFields?.emailRequired ?? false,
+      enableSuggestions: eventConfig?.formFields?.enableSuggestions ?? true,
+    });
+    setIsConfiguringFields(true);
   };
 
   const handleSaveFieldSettings = async () => {
@@ -284,9 +296,9 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             <div className="flex items-center gap-2 shrink-0">
               {/* Form Field Settings Gear Button */}
               <button
-                onClick={() => setIsConfiguringFields(true)}
+                onClick={handleOpenConfigModal}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-blue-200 dark:border-blue-800 shadow-sm"
-                title="Set Required Fields"
+                title="Configure Form Fields & Autocomplete"
               >
                 <Settings size={14} className="text-blue-600 dark:text-blue-400" />
                 Configure Fields
@@ -306,14 +318,14 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
         </div>
       )}
 
-      {/* ─── Field Requirements Configuration Modal ─── */}
+      {/* ─── Field Requirements & Autocomplete Configuration Modal ─── */}
       {isConfiguringFields && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden p-6 space-y-4 animate-bounce-in border border-gray-100 dark:border-slate-800">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
               <h3 className="font-bold text-gray-800 dark:text-white text-sm flex items-center gap-2">
                 <Settings size={16} className="text-blue-600 dark:text-blue-400" />
-                Form Field Requirements
+                Form Configuration
               </h3>
               <button onClick={() => setIsConfiguringFields(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
                 <X size={18} />
@@ -321,7 +333,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </div>
 
             <p className="text-xs text-gray-500 dark:text-slate-400">
-              Select which fields attendees are strictly required to fill up in the public form:
+              Set required fields and toggle autocomplete behavior for the public registration form:
             </p>
 
             <div className="space-y-2.5 pt-1">
@@ -366,6 +378,24 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                   type="checkbox"
                   checked={fieldSettings.emailRequired}
                   onChange={e => setFieldSettings({ ...fieldSettings, emailRequired: e.target.checked })}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                />
+              </label>
+
+              {/* Autocomplete Suggestions Toggle */}
+              <label className="flex items-center justify-between p-3 bg-blue-50/60 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 rounded-xl cursor-pointer hover:bg-blue-100/50 transition-colors mt-2">
+                <div>
+                  <span className="text-xs font-semibold text-gray-800 dark:text-slate-200 block">
+                    Enable Data Autocomplete
+                  </span>
+                  <span className="text-[10px] text-gray-500 dark:text-slate-400 block">
+                    Show name & field suggestions from Data Attendees tab
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={fieldSettings.enableSuggestions}
+                  onChange={e => setFieldSettings({ ...fieldSettings, enableSuggestions: e.target.checked })}
                   className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                 />
               </label>
@@ -422,7 +452,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
       {/* Filters Bar */}
       <div className="space-y-3">
-        {/* Attendance Status Tabs (All, Attending, Not Attending, Present) */}
+        {/* Attendance Status Tabs */}
         <div className="flex bg-gray-100 dark:bg-slate-800/80 p-1 rounded-xl w-full sm:w-fit overflow-x-auto">
           <button
             onClick={() => setFilterAttendance('all')}
@@ -483,7 +513,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             />
           </div>
 
-          {/* Department Filter (Alphabetical A-Z) */}
+          {/* Department Filter */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -496,7 +526,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Group Filter (Alphabetical A-Z) */}
+          {/* Group Filter */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <Users2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -509,7 +539,7 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
             </select>
           </div>
 
-          {/* Table No. Filter (Lowest to Highest) */}
+          {/* Table No. Filter */}
           <div className="relative sm:col-span-4 md:col-span-2">
             <LayoutGrid size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
             <select 
@@ -706,7 +736,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
 
                   {/* Actions & Meta Badges (Far Right Column) */}
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    {/* Top Row: Buttons */}
                     <div className="flex items-center gap-1">
                       <button 
                         onClick={() => toggleExpand(attendee.id)} 
@@ -716,7 +745,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                         {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                       </button>
                       
-                      {/* QR Code Button STRICTLY Hidden for Non-Attendees */}
                       {isAttending && (
                         <button 
                           onClick={() => onNavigate('qr-view', attendee)} 
@@ -731,7 +759,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       <button onClick={() => setShowDeleteConfirm(attendee.id)} className="p-2 hover:bg-orange-50 dark:hover:bg-orange-950 rounded-lg text-orange-500 dark:text-orange-400 transition-colors" title="Delete"><Trash2 size={18} /></button>
                     </div>
 
-                    {/* Bottom Row: Group & Table No. side-by-side on 1 line */}
                     {(attendee.group || attendee.tableNo) && (
                       <div className="flex items-center gap-1.5 flex-wrap justify-end">
                         {attendee.group && (
@@ -774,7 +801,6 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
                       </div>
                     </div>
 
-                    {/* Check In Button rendered inside expanded section strictly for attending users */}
                     {isAttending && (
                       <button
                         onClick={() => handleCheckIn(attendee)}
