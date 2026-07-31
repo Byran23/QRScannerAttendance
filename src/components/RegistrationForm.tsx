@@ -204,20 +204,17 @@ export default function RegistrationForm() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors font-sans">
       
-      {/* ─── Header Banner (Mobile Fix) ─── */}
+      {/* ─── Header Banner (Mobile Safari & Chrome Fixed) ─── */}
       <header className="relative w-full min-h-[160px] sm:min-h-[180px] bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
         {eventConfig?.imageUrl ? (
           <>
-            <img
-              src={getDirectImageUrl(eventConfig.imageUrl)}
-              alt="Event Header Logo"
-              className="absolute inset-0 w-full h-full object-cover object-center opacity-85 z-0"
-              crossOrigin="anonymous"
-              onError={(e) => { 
-                console.warn("Failed to load header image URL:", eventConfig?.imageUrl);
-                (e.target as HTMLElement).style.display = 'none'; 
-              }}
+            {/* Background Image Container using Inline Style for Mobile WebKit Compatibility */}
+            <div 
+              className="absolute inset-0 w-full h-full bg-cover bg-center opacity-85 z-0"
+              style={{ backgroundImage: `url("${getDirectImageUrl(eventConfig.imageUrl)}")` }}
             />
+            
+            {/* Dark Overlay Gradient */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 z-0 pointer-events-none" />
           </>
         ) : (
