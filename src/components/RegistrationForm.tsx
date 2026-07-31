@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
@@ -7,7 +7,7 @@ import { Attendee } from '../types';
 import { isGoogleSheetsConfigured } from '../googleSheets';
 
 export default function RegistrationForm() {
-  const { addAttendee, synced, eventConfig } = useData();
+  const { addAttendee, synced, eventConfig, attendees } = useData();
   const [form, setForm] = useState({ 
     name: '', 
     email: '', 
@@ -26,14 +26,22 @@ export default function RegistrationForm() {
 
   const sheetConfigured = isGoogleSheetsConfigured();
 
+  // ─── Extract Unique Suggestions from Google Sheet Attendees ───
+  const departmentSuggestions = useMemo(() => {
+    return [...new Set((attendees || []).map(a => a.department?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, [attendees]);
+
+  const positionSuggestions = useMemo(() => {
+    return [...new Set((attendees || []).map(a => a.position?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, [attendees]);
+
   // Dynamic field requirement check helper
   const isReq = (field: 'departmentRequired' | 'positionRequired' | 'phoneRequired' | 'emailRequired') => {
     if (eventConfig?.formFields && eventConfig.formFields[field] !== undefined) {
       return !!eventConfig.formFields[field];
     }
-    // Fallback defaults if configuration is unset
     if (field === 'emailRequired') return false;
-    return true; // department, position, phone default to required
+    return true;
   };
 
   const validate = () => {
@@ -209,6 +217,7 @@ export default function RegistrationForm() {
                   disabled={submitting} 
                 />
 
+                {/* Department Field with Autocomplete Suggestions */}
                 <Field 
                   label={`Department/Office${!isReq('departmentRequired') ? ' (optional)' : ''}`} 
                   value={form.department} 
@@ -216,9 +225,16 @@ export default function RegistrationForm() {
                   error={errors.department} 
                   placeholder="Sangguniang Panlalawigan Office" 
                   required={isReq('departmentRequired')} 
-                  disabled={submitting} 
+                  disabled={submitting}
+                  list="department-list" 
                 />
+                <datalist id="department-list">
+                  {departmentSuggestions.map(dept => (
+                    <option key={dept} value={dept} />
+                  ))}
+                </datalist>
 
+                {/* Position Field with Autocomplete Suggestions */}
                 <Field 
                   label={`Position${!isReq('positionRequired') ? ' (optional)' : ''}`} 
                   value={form.position} 
@@ -226,8 +242,14 @@ export default function RegistrationForm() {
                   error={errors.position} 
                   placeholder="Legislative Staff" 
                   required={isReq('positionRequired')} 
-                  disabled={submitting} 
+                  disabled={submitting}
+                  list="position-list" 
                 />
+                <datalist id="position-list">
+                  {positionSuggestions.map(pos => (
+                    <option key={pos} value={pos} />
+                  ))}
+                </datalist>
 
                 <Field 
                   label={`Phone Number${!isReq('phoneRequired') ? ' (optional)' : ''}`} 
@@ -428,8 +450,8 @@ export default function RegistrationForm() {
   );
 }
 
-function Field({ label, value, onChange, error, placeholder, type = 'text', required, disabled }: {
-  label: string; value: string; onChange: (v: string) => void; error?: string; placeholder?: string; type?: string; required?: boolean; disabled?: boolean;
+function Field({ label, value, onChange, error, placeholder, type = 'text', required, disabled, list }: {
+  label: string; value: string; onChange: (v: string) => void; error?: string; placeholder?: string; type?: string; required?: boolean; disabled?: boolean; list?: string;
 }) {
   return (
     <div>
@@ -442,6 +464,7 @@ function Field({ label, value, onChange, error, placeholder, type = 'text', requ
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
+        list={list}
         className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
           error
             ? 'border-orange-300 dark:border-orange-700 focus:ring-orange-500 bg-orange-50 dark:bg-orange-950/30'
