@@ -178,20 +178,24 @@ export default function RegistrationForm() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors font-sans">
       
-      {/* ─── Header Banner ─── */}
-      <header className="relative min-h-[140px] sm:min-h-[160px] w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center">
+      {/* ─── Header Banner (Mobile-Optimized) ─── */}
+      <header className="relative w-full min-h-[160px] sm:min-h-[180px] bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center overflow-hidden">
         {eventConfig?.imageUrl ? (
           <>
             <img
               src={eventConfig.imageUrl}
               alt="Event Header Logo"
-              className="w-full h-full object-cover opacity-85 absolute inset-0"
-              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+              className="absolute inset-0 w-full h-full object-cover object-center opacity-85 z-0"
+              crossOrigin="anonymous"
+              onError={(e) => { 
+                console.error("Failed to load header image:", eventConfig.imageUrl);
+                (e.target as HTMLElement).style.display = 'none'; 
+              }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 z-0" />
           </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-orange-500 z-0" />
         )}
 
         <div className="relative max-w-lg mx-auto px-4 py-6 text-center text-white z-10 flex flex-col items-center justify-center">
