@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake } from 'lucide-react';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake, User, Building2, Briefcase } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
 import { getInitials, getInitialsBg } from '../utils/initials';
@@ -7,7 +7,7 @@ import { Attendee } from '../types';
 import { isGoogleSheetsConfigured } from '../googleSheets';
 
 export default function RegistrationForm() {
-  const { addAttendee, synced, eventConfig } = useData();
+  const { addAttendee, synced, eventConfig, dataAttendees } = useData();
   const [form, setForm] = useState({ 
     name: '', 
     email: '', 
@@ -26,14 +26,45 @@ export default function RegistrationForm() {
 
   const sheetConfigured = isGoogleSheetsConfigured();
 
+  // ─── Master List from 'Data Attendees' Tab ───
+  const masterList = dataAttendees || [];
+
+  const nameOptions = useMemo(() => {
+    return [...new Set(masterList.map(a => a.name?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, [masterList]);
+
+  const departmentOptions = useMemo(() => {
+    return [...new Set(masterList.map(a => a.department?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, [masterList]);
+
+  const positionOptions = useMemo(() => {
+    return [...new Set(masterList.map(a => a.position?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, [masterList]);
+
+  // Handle name selection and auto-fill remaining fields
+  const handleSelectName = (selectedName: string) => {
+    const matched = masterList.find(a => a.name?.toLowerCase().trim() === selectedName.toLowerCase().trim());
+    if (matched) {
+      setForm(prev => ({
+        ...prev,
+        name: selectedName,
+        email: matched.email || prev.email,
+        department: matched.department || prev.department,
+        position: matched.position || prev.position,
+        phone: matched.phone || prev.phone,
+      }));
+    } else {
+      setForm(prev => ({ ...prev, name: selectedName }));
+    }
+  };
+
   // Dynamic field requirement check helper
   const isReq = (field: 'departmentRequired' | 'positionRequired' | 'phoneRequired' | 'emailRequired') => {
     if (eventConfig?.formFields && eventConfig.formFields[field] !== undefined) {
       return !!eventConfig.formFields[field];
     }
-    // Fallback defaults if configuration is unset
     if (field === 'emailRequired') return false;
-    return true; // department, position, phone default to required
+    return true;
   };
 
   const validate = () => {
@@ -114,7 +145,7 @@ export default function RegistrationForm() {
   const isAttending = createdAttendee?.willAttend !== false;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors font-sans">
       
       {/* ─── Header Banner ─── */}
       <header className="relative min-h-[140px] sm:min-h-[160px] w-full overflow-hidden bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-center">
@@ -152,7 +183,7 @@ export default function RegistrationForm() {
           <div className="space-y-5">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Register Attendance</h2>
-              <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Fill in your details to confirm your attendance status</p>
+              <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Select or type your name to auto-fill details</p>
             </div>
 
             {!sheetConfigured && (
@@ -199,37 +230,49 @@ export default function RegistrationForm() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <Field 
+                {/* Full Name with Custom Autocomplete & Auto-Fill */}
+                <AutocompleteField 
                   label="Full Name" 
                   value={form.name} 
-                  onChange={v => setForm(f => ({ ...f, name: v }))} 
+                  onChange={v => setForm(f => ({ ...f, name: v }))}
+                  onSelect={handleSelectName}
+                  options={nameOptions}
                   error={errors.name} 
                   placeholder="Juan Dela Cruz" 
                   required 
-                  disabled={submitting} 
+                  disabled={submitting}
+                  icon={<User size={14} className="text-blue-500" />}
                 />
 
-                <Field 
+                {/* Department Field with Custom Autocomplete */}
+                <AutocompleteField 
                   label={`Department/Office${!isReq('departmentRequired') ? ' (optional)' : ''}`} 
                   value={form.department} 
                   onChange={v => setForm(f => ({ ...f, department: v }))} 
+                  onSelect={v => setForm(f => ({ ...f, department: v }))}
+                  options={departmentOptions}
                   error={errors.department} 
                   placeholder="Sangguniang Panlalawigan Office" 
                   required={isReq('departmentRequired')} 
-                  disabled={submitting} 
+                  disabled={submitting}
+                  icon={<Building2 size={14} className="text-blue-500" />}
                 />
 
-                <Field 
+                {/* Position Field with Custom Autocomplete */}
+                <AutocompleteField 
                   label={`Position${!isReq('positionRequired') ? ' (optional)' : ''}`} 
                   value={form.position} 
                   onChange={v => setForm(f => ({ ...f, position: v }))} 
+                  onSelect={v => setForm(f => ({ ...f, position: v }))}
+                  options={positionOptions}
                   error={errors.position} 
                   placeholder="Legislative Staff" 
                   required={isReq('positionRequired')} 
-                  disabled={submitting} 
+                  disabled={submitting}
+                  icon={<Briefcase size={14} className="text-blue-500" />}
                 />
 
-                <Field 
+                <StandardField 
                   label={`Phone Number${!isReq('phoneRequired') ? ' (optional)' : ''}`} 
                   value={form.phone} 
                   onChange={v => setForm(f => ({ ...f, phone: v }))} 
@@ -239,7 +282,7 @@ export default function RegistrationForm() {
                   disabled={submitting} 
                 />
 
-                <Field 
+                <StandardField 
                   label={`Email Address${!isReq('emailRequired') ? ' (optional)' : ''}`} 
                   type="email" 
                   value={form.email} 
@@ -428,7 +471,82 @@ export default function RegistrationForm() {
   );
 }
 
-function Field({ label, value, onChange, error, placeholder, type = 'text', required, disabled }: {
+// ─── Custom Floating Autocomplete Field Component ───
+function AutocompleteField({ 
+  label, value, onChange, onSelect, options, error, placeholder, required, disabled, icon 
+}: {
+  label: string; value: string; onChange: (v: string) => void; onSelect: (v: string) => void; options: string[]; error?: string; placeholder?: string; required?: boolean; disabled?: boolean; icon?: React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Filter options based on user input
+  const filtered = useMemo(() => {
+    if (!value.trim()) return options.slice(0, 8);
+    return options.filter(opt => opt.toLowerCase().includes(value.toLowerCase().trim())).slice(0, 8);
+  }, [options, value]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+        {label} {required && <span className="text-orange-500">*</span>}
+      </label>
+      
+      <input
+        type="text"
+        value={value}
+        onChange={e => {
+          onChange(e.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={`w-full px-4 py-2.5 border rounded-xl focus:outline-none focus:ring-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+          error
+            ? 'border-orange-300 dark:border-orange-700 focus:ring-orange-500 bg-orange-50 dark:bg-orange-950/30'
+            : 'border-gray-200 dark:border-slate-700 focus:ring-blue-500 bg-white dark:bg-slate-800'
+        } dark:text-white dark:placeholder-slate-500 text-xs sm:text-sm`}
+      />
+
+      {/* Floating Suggestions Dropdown Menu */}
+      {isOpen && filtered.length > 0 && !disabled && (
+        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-50 max-h-52 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-800 animate-fade-in">
+          {filtered.map((item, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => {
+                onSelect(item);
+                setIsOpen(false);
+              }}
+              className="w-full text-left px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-xs sm:text-sm text-gray-800 dark:text-slate-200 flex items-center gap-2 transition-colors"
+            >
+              {icon}
+              <span className="truncate font-medium">{item}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {error && <p className="text-orange-600 dark:text-orange-400 text-xs mt-1">{error}</p>}
+    </div>
+  );
+}
+
+// ─── Standard Form Field Component ───
+function StandardField({ label, value, onChange, error, placeholder, type = 'text', required, disabled }: {
   label: string; value: string; onChange: (v: string) => void; error?: string; placeholder?: string; type?: string; required?: boolean; disabled?: boolean;
 }) {
   return (
