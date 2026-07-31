@@ -8,15 +8,18 @@ import { isGoogleSheetsConfigured } from '../googleSheets';
 
 const LS_DEVICE_REGISTERED_KEY = 'attendease_device_submission';
 
-// Helper function to convert Google Drive share links to direct image URLs
+// Helper function to convert Google Drive share links to mobile-friendly direct image URLs
 export function getDirectImageUrl(url: string): string {
   if (!url) return '';
+  
+  // Extract File ID from standard Google Drive URLs
   const driveRegex = /\/d\/([a-zA-Z0-9_-]+)/;
   const match = url.match(driveRegex);
 
   if (match && match[1]) {
     const fileId = match[1];
-    return `https://lh3.googleusercontent.com/d/${fileId}`;
+    // Uses Google's direct image CDN endpoint (Bypasses CORS & MIME type blocks on mobile Safari/Chrome)
+    return `https://lh3.googleusercontent.com/d/${fileId}=w1000`;
   }
 
   return url;
