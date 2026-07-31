@@ -28,13 +28,37 @@ export default function AttendeeList({ onNavigate }: AttendeeListProps) {
   const [showRegistrationBanner, setShowRegistrationBanner] = useState(false);
 
   // Field Requirements Config Modal State
-  const [isConfiguringFields, setIsConfiguringFields] = useState(false);
+  // Inside the Configure Fields Modal in AttendeeList.tsx
   const [fieldSettings, setFieldSettings] = useState({
     departmentRequired: eventConfig?.formFields?.departmentRequired ?? true,
     positionRequired: eventConfig?.formFields?.positionRequired ?? true,
     phoneRequired: eventConfig?.formFields?.phoneRequired ?? true,
     emailRequired: eventConfig?.formFields?.emailRequired ?? false,
+    enableSuggestions: eventConfig?.formFields?.enableSuggestions ?? true, // Default ON
   });
+
+  // Inside Modal JSX:
+  <div className="space-y-2.5 pt-1">
+    {/* Existing requirement checkboxes... */}
+
+    {/* Toggle Autocomplete Suggestions */}
+    <label className="flex items-center justify-between p-3 bg-blue-50/60 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 rounded-xl cursor-pointer hover:bg-blue-100/50 transition-colors mt-2">
+      <div>
+        <span className="text-xs font-semibold text-gray-800 dark:text-slate-200 block">
+          Enable Data Autocomplete
+        </span>
+        <span className="text-[10px] text-gray-500 dark:text-slate-400 block">
+          Show name & field suggestions from Data Attendees tab
+        </span>
+      </div>
+      <input
+        type="checkbox"
+        checked={fieldSettings.enableSuggestions}
+        onChange={e => setFieldSettings({ ...fieldSettings, enableSuggestions: e.target.checked })}
+        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+      />
+    </label>
+  </div>
   const [isSavingFields, setIsSavingFields] = useState(false);
 
   // Quick RSVP Editing Modal State

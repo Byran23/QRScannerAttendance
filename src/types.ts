@@ -25,6 +25,7 @@ export interface RequiredFieldsConfig {
   phone?: boolean;
   department?: boolean;
   position?: boolean;
+  enableSuggestions?: boolean; // New toggle flag
 }
 
 export interface EventConfig {
