@@ -1,13 +1,15 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake, User, Building2, Briefcase } from 'lucide-react';
+import { ScanLine, CheckCircle, Download, Send, AlertTriangle, Loader2, CloudOff, XCircle, HeartHandshake, User, Building2, Briefcase, Lock, ShieldAlert } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useData } from '../DataContext';
 import { getInitials, getInitialsBg } from '../utils/initials';
 import { Attendee } from '../types';
 import { isGoogleSheetsConfigured } from '../googleSheets';
 
+const LS_DEVICE_REGISTERED_KEY = 'attendease_device_submission';
+
 export default function RegistrationForm() {
-  const { addAttendee, synced, eventConfig, dataAttendees } = useData();
+  const { addAttendee, synced, eventConfig, dataAttendees, attendees } = useData();
   const [form, setForm] = useState({ 
     name: '', 
     email: '', 
@@ -22,9 +24,25 @@ export default function RegistrationForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [createdAttendee, setCreatedAttendee] = useState<Attendee | null>(null);
-  const qrRef = useRef<HTMLDivElement>(null);
+  
+  // ─── 1 Phone to 1 Entry Lockout Check ───
+  const [alreadyRegisteredOnDevice, setAlreadyRegisteredOnDevice] = useState<Attendee | null>(null);
 
+  const qrRef = useRef<HTMLDivElement>(null);
   const sheetConfigured = isGoogleSheetsConfigured();
+
+  // Check on mount if this phone/device already registered
+  useEffect(() => {
+    try {
+      const savedSubmission = localStorage.getItem(LS_DEVICE_REGISTERED_KEY);
+      if (savedSubmission) {
+        const parsed = JSON.parse(savedSubmission);
+        setAlreadyRegisteredOnDevice(parsed);
+      }
+    } catch (e) {
+      console.error('Failed to parse local device submission lock:', e);
+    }
+  }, []);
 
   // ─── Autocomplete Check & Options from 'Data Attendees' Tab ───
   const suggestionsEnabled = eventConfig?.formFields?.enableSuggestions !== false;
@@ -45,7 +63,6 @@ export default function RegistrationForm() {
     return [...new Set(masterList.map(a => a.position?.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   }, [masterList, suggestionsEnabled]);
 
-  // Handle name selection and auto-fill remaining fields
   const handleSelectName = (selectedName: string) => {
     if (suggestionsEnabled) {
       const matched = masterList.find(a => a.name?.toLowerCase().trim() === selectedName.toLowerCase().trim());
@@ -64,13 +81,12 @@ export default function RegistrationForm() {
     setForm(prev => ({ ...prev, name: selectedName }));
   };
 
-  // Dynamic field requirement check helper
   const isReq = (field: 'departmentRequired' | 'positionRequired' | 'phoneRequired' | 'emailRequired') => {
     if (eventConfig?.formFields && eventConfig.formFields[field] !== undefined) {
       return !!eventConfig.formFields[field];
     }
     if (field === 'emailRequired') return false;
-    return true; // Department, Position, Phone default to required
+    return true;
   };
 
   const validate = () => {
@@ -83,6 +99,13 @@ export default function RegistrationForm() {
     
     if (form.willAttend === 'no' && !form.reason.trim()) {
       errs.reason = 'Please state your reason for not attending';
+    }
+
+    // ── Check if Phone or Name already exists in attendees database ──
+    const normalizedPhone = form.phone.replace(/\D/g, '');
+    const phoneExists = attendees.some(a => a.phone && a.phone.replace(/\D/g, '') === normalizedPhone && normalizedPhone.length > 5);
+    if (phoneExists) {
+      errs.phone = 'This phone number has already submitted an entry.';
     }
 
     setErrors(errs);
@@ -109,6 +132,9 @@ export default function RegistrationForm() {
         reason: form.willAttend === 'no' ? form.reason.trim() : '',
       });
 
+      // ─── Save Lockout to LocalStorage on this Device ───
+      localStorage.setItem(LS_DEVICE_REGISTERED_KEY, JSON.stringify(attendee));
+
       setCreatedAttendee(attendee);
       setSubmitted(true);
     } catch (err) {
@@ -120,7 +146,8 @@ export default function RegistrationForm() {
   };
 
   const handleDownloadQR = () => {
-    if (!createdAttendee || !qrRef.current) return;
+    const currentAttendee = createdAttendee || alreadyRegisteredOnDevice;
+    if (!currentAttendee || !qrRef.current) return;
     const svg = qrRef.current.querySelector('svg');
     if (!svg) return;
 
@@ -137,7 +164,7 @@ export default function RegistrationForm() {
         ctx.fillRect(0, 0, 400, 400);
         ctx.drawImage(img, 0, 0, 400, 400);
         const link = document.createElement('a');
-        link.download = `QR-${createdAttendee.name.replace(/\s+/g, '-')}.png`;
+        link.download = `QR-${currentAttendee.name.replace(/\s+/g, '-')}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
       }
@@ -145,10 +172,8 @@ export default function RegistrationForm() {
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   };
 
-  const previewInitials = form.name.trim() ? getInitials(form.name) : '?';
-  const previewBg = form.name.trim() ? getInitialsBg(form.name) : 'bg-gray-400';
-
-  const isAttending = createdAttendee?.willAttend !== false;
+  const activeDisplayAttendee = createdAttendee || alreadyRegisteredOnDevice;
+  const isAttending = activeDisplayAttendee?.willAttend !== false;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors font-sans">
@@ -184,8 +209,57 @@ export default function RegistrationForm() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6">
-        {!submitted ? (
-          /* ─── Registration Form ─── */
+        
+        {/* ─── DEVICE LOCK SCREEN: Show if phone already registered ─── */}
+        {alreadyRegisteredOnDevice && !submitted ? (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 text-center space-y-4 animate-fade-in">
+            <div className="w-14 h-14 bg-amber-50 dark:bg-amber-950/60 rounded-full flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
+              <Lock size={30} />
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 dark:text-white">Device Submission Lock</h2>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                This phone has already registered an entry for this event. Only 1 submission is allowed per device.
+              </p>
+            </div>
+
+            <div className="p-4 bg-gray-50 dark:bg-slate-800/60 rounded-xl text-left border border-gray-100 dark:border-slate-800 text-xs text-gray-600 dark:text-slate-300 space-y-1.5">
+              <p><span className="font-semibold text-gray-700 dark:text-slate-200">Registered Name:</span> {alreadyRegisteredOnDevice.name}</p>
+              <p><span className="font-semibold text-gray-700 dark:text-slate-200">Department:</span> {alreadyRegisteredOnDevice.department}</p>
+              <p><span className="font-semibold text-gray-700 dark:text-slate-200">Status:</span> {alreadyRegisteredOnDevice.willAttend ? <span className="text-green-600 font-semibold">Attending</span> : <span className="text-red-600 font-semibold">Not Attending</span>}</p>
+            </div>
+
+            {alreadyRegisteredOnDevice.willAttend && (
+              <div className="pt-2">
+                <div ref={qrRef} className="inline-block bg-white p-4 rounded-2xl border border-gray-200 shadow-sm mb-3">
+                  <QRCodeSVG
+                    value={JSON.stringify({
+                      id: alreadyRegisteredOnDevice.id,
+                      name: alreadyRegisteredOnDevice.name,
+                      email: alreadyRegisteredOnDevice.email,
+                      department: alreadyRegisteredOnDevice.department,
+                      willAttend: true,
+                    })}
+                    size={180}
+                    level="H"
+                    includeMargin={true}
+                    fgColor="#1e40af"
+                    bgColor="#ffffff"
+                  />
+                </div>
+                <button
+                  onClick={handleDownloadQR}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-md"
+                >
+                  <Download size={15} />
+                  Download Saved QR Code
+                </button>
+              </div>
+            )}
+          </div>
+        ) : !submitted ? (
+          /* ─── Standard Registration Form ─── */
           <div className="space-y-5">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Register Attendance</h2>
@@ -207,8 +281,8 @@ export default function RegistrationForm() {
               
               {/* Preview Card */}
               <div className="flex items-start gap-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl mb-5">
-                <div className={`w-12 h-12 rounded-full ${previewBg} flex items-center justify-center text-white text-lg font-bold transition-colors shrink-0 mt-0.5`}>
-                  {previewInitials}
+                <div className={`w-12 h-12 rounded-full ${getInitialsBg(form.name)} flex items-center justify-center text-white text-lg font-bold transition-colors shrink-0 mt-0.5`}>
+                  {form.name.trim() ? getInitials(form.name) : '?'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
@@ -238,7 +312,6 @@ export default function RegistrationForm() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Full Name Field */}
                 <AutocompleteField 
                   label="Full Name" 
                   value={form.name} 
@@ -253,7 +326,6 @@ export default function RegistrationForm() {
                   icon={<User size={14} className="text-blue-500" />}
                 />
 
-                {/* Department Field */}
                 <AutocompleteField 
                   label={`Department/Office${!isReq('departmentRequired') ? ' (optional)' : ''}`} 
                   value={form.department} 
@@ -268,7 +340,6 @@ export default function RegistrationForm() {
                   icon={<Building2 size={14} className="text-blue-500" />}
                 />
 
-                {/* Position Field */}
                 <AutocompleteField 
                   label={`Position${!isReq('positionRequired') ? ' (optional)' : ''}`} 
                   value={form.position} 
@@ -283,7 +354,6 @@ export default function RegistrationForm() {
                   icon={<Briefcase size={14} className="text-blue-500" />}
                 />
 
-                {/* Phone Number Field */}
                 <StandardField 
                   label={`Phone Number${!isReq('phoneRequired') ? ' (optional)' : ''}`} 
                   value={form.phone} 
@@ -294,7 +364,6 @@ export default function RegistrationForm() {
                   disabled={submitting} 
                 />
 
-                {/* Email Field */}
                 <StandardField 
                   label={`Email Address${!isReq('emailRequired') ? ' (optional)' : ''}`} 
                   type="email" 
@@ -391,14 +460,13 @@ export default function RegistrationForm() {
             </div>
 
             <p className="text-center text-[11px] text-gray-400 dark:text-slate-500">
-              Your response will be recorded for event management.
+              Only 1 registration entry is allowed per phone/device.
             </p>
           </div>
         ) : createdAttendee ? (
           /* ─── Success Views ─── */
           <div className="space-y-5 animate-fade-in">
             {isAttending ? (
-              /* ── 1) WILL ATTEND: Success Banner + QR Code ── */
               <>
                 <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-2xl p-5 text-center">
                   <CheckCircle size={40} className="text-green-600 dark:text-green-400 mx-auto mb-3" />
@@ -454,7 +522,6 @@ export default function RegistrationForm() {
                 </div>
               </>
             ) : (
-              /* ── 2) WILL NOT ATTEND: Thank You View (NO QR CODE) ── */
               <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-slate-800 text-center space-y-4">
                 <div className="w-16 h-16 bg-blue-50 dark:bg-blue-950/60 rounded-full flex items-center justify-center mx-auto text-blue-600 dark:text-blue-400">
                   <HeartHandshake size={36} />
@@ -484,7 +551,6 @@ export default function RegistrationForm() {
   );
 }
 
-// ─── Custom Floating Autocomplete Field Component ───
 function AutocompleteField({ 
   label, value, onChange, onSelect, options, enabled, error, placeholder, required, disabled, icon 
 }: {
@@ -534,7 +600,6 @@ function AutocompleteField({
         } dark:text-white dark:placeholder-slate-500 text-xs sm:text-sm`}
       />
 
-      {/* Dropdown Menu (Strictly hidden when enabled is false) */}
       {isOpen && enabled && filtered.length > 0 && !disabled && (
         <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-50 max-h-52 overflow-y-auto divide-y divide-gray-100 dark:divide-slate-800 animate-fade-in">
           {filtered.map((item, idx) => (
@@ -559,7 +624,6 @@ function AutocompleteField({
   );
 }
 
-// ─── Standard Form Field Component ───
 function StandardField({ label, value, onChange, error, placeholder, type = 'text', required, disabled }: {
   label: string; value: string; onChange: (v: string) => void; error?: string; placeholder?: string; type?: string; required?: boolean; disabled?: boolean;
 }) {
