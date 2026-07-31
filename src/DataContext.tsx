@@ -11,8 +11,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Attendee, AttendanceRecord, EventConfig, FormFieldsConfig } from './types';
 import { isGoogleSheetsConfigured, GOOGLE_SHEETS_CONFIG } from './googleSheets';
 
-// ─── localStorage keys ───
 const LS_ATTENDEES = 'attendease_attendees';
+const LS_DATA_ATTENDEES = 'attendease_data_attendees';
 const LS_RECORDS = 'attendease_records';
 const LS_DELETED_RECORDS = 'attendease_deleted_record_ids';
 const LS_DELETED_ATTENDEES = 'attendease_deleted_attendee_ids';
@@ -27,11 +27,7 @@ function lsSet<T>(key: string, data: T[]) {
 function lsGetSet(key: string): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')); } catch { return new Set(); }
 }
-function lsSetSet(key: string, set: Set<string>) {
-  localStorage.setItem(key, JSON.stringify([...set]));
-}
 
-// Default Form Field Requirements
 const DEFAULT_FORM_FIELDS: FormFieldsConfig = {
   departmentRequired: true,
   positionRequired: true,
@@ -39,7 +35,6 @@ const DEFAULT_FORM_FIELDS: FormFieldsConfig = {
   emailRequired: false,
 };
 
-// ─── Helper to parse willAttend string/boolean ───
 export function parseWillAttend(value: unknown): boolean {
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
   if (typeof value === 'string') {
@@ -51,9 +46,9 @@ export function parseWillAttend(value: unknown): boolean {
   return true;
 }
 
-// ─── Context Interface ───
 interface DataContextType {
   attendees: Attendee[];
+  dataAttendees: Attendee[];
   records: AttendanceRecord[];
   todayRecords: AttendanceRecord[];
   eventConfig: EventConfig;
@@ -77,16 +72,7 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType>(null!);
 
-function seedDefaults(): Attendee[] {
-  return [
-    { id: 'demo-001', name: 'Alice Johnson', email: 'alice@company.com', department: 'Engineering', position: 'Software Engineer', phone: '+1 (555) 123-4567', createdAt: new Date().toISOString(), willAttend: true, reason: '', group: 'Group A', tableNo: '1' },
-    { id: 'demo-002', name: 'Bob Smith', email: 'bob@company.com', department: 'Design Office', position: 'UI/UX Designer', phone: '+1 (555) 234-5678', createdAt: new Date().toISOString(), willAttend: true, reason: '', group: 'Group B', tableNo: '2' },
-    { id: 'demo-003', name: 'Carol Davis', email: 'carol@company.com', department: 'Marketing', position: 'Marketing Manager', phone: '+1 (555) 345-6789', createdAt: new Date().toISOString(), willAttend: true, reason: '', group: 'Group A', tableNo: '3' },
-  ];
-}
-
-// ─── Google Sheets API Fetch ───
-async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceRecord[]; eventConfig: EventConfig }> {
+async function gsGet(): Promise<{ attendees: Attendee[]; dataAttendees: Attendee[]; records: AttendanceRecord[]; eventConfig: EventConfig }> {
   const url = `${GOOGLE_SHEETS_CONFIG.WEB_APP_URL}?action=getAll&t=${Date.now()}`;
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -107,7 +93,20 @@ async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceReco
     tableNo: String(a.tableNo || ''),
   }));
 
-  // Parse Form Field Configs safely from GS
+  const parsedDataAttendees: Attendee[] = (data.dataAttendees || []).map((a: any, idx: number) => ({
+    id: String(a.id || `data-${idx}`),
+    name: String(a.name || ''),
+    email: String(a.email || ''),
+    department: String(a.department || ''),
+    position: String(a.position || ''),
+    phone: String(a.phone || ''),
+    createdAt: String(a.createdAt || ''),
+    willAttend: true,
+    reason: '',
+    group: String(a.group || ''),
+    tableNo: String(a.tableNo || ''),
+  }));
+
   let parsedFormFields: FormFieldsConfig = DEFAULT_FORM_FIELDS;
   if (data.eventConfig?.formFields) {
     if (typeof data.eventConfig.formFields === 'string') {
@@ -129,6 +128,7 @@ async function gsGet(): Promise<{ attendees: Attendee[]; records: AttendanceReco
 
   return {
     attendees: parsedAttendees.sort((a, b) => a.name.localeCompare(b.name)),
+    dataAttendees: parsedDataAttendees.sort((a, b) => a.name.localeCompare(b.name)),
     records: (data.records || []).sort((a: AttendanceRecord, b: AttendanceRecord) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     ),
@@ -148,9 +148,9 @@ async function gsPost(action: string, payload: Record<string, unknown>) {
   return data;
 }
 
-// ─── Provider Component ───
 export function DataProvider({ children }: { children: ReactNode }) {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [dataAttendees, setDataAttendees] = useState<Attendee[]>(() => lsGet<Attendee>(LS_DATA_ATTENDEES));
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [eventConfig, setEventConfig] = useState<EventConfig>(() => {
     try {
@@ -192,7 +192,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const data = await gsGet();
         const filtered = applyTombstones(data.attendees, data.records);
         setAttendees(filtered.attendees);
+        setDataAttendees(data.dataAttendees);
         setRecords(filtered.records);
+
         if (data.eventConfig) {
           const mergedConfig: EventConfig = {
             ...data.eventConfig,
@@ -202,25 +204,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(LS_EVENT_CONFIG, JSON.stringify(mergedConfig));
         }
         lsSet(LS_ATTENDEES, filtered.attendees);
+        lsSet(LS_DATA_ATTENDEES, data.dataAttendees);
         lsSet(LS_RECORDS, filtered.records);
       } catch (err) {
         console.error('GS fetch failed:', err);
-        const a = lsGet<Attendee>(LS_ATTENDEES).map(item => ({ ...item, willAttend: parseWillAttend(item.willAttend) }));
-        const r = lsGet<AttendanceRecord>(LS_RECORDS);
-        const filtered = applyTombstones(a, r);
-        setAttendees(filtered.attendees);
-        setRecords(filtered.records);
       }
-    } else {
-      let stored = lsGet<Attendee>(LS_ATTENDEES).map(item => ({ ...item, willAttend: parseWillAttend(item.willAttend) }));
-      if (stored.length === 0) {
-        stored = seedDefaults();
-        lsSet(LS_ATTENDEES, stored);
-      }
-      const rStored = lsGet<AttendanceRecord>(LS_RECORDS);
-      const filtered = applyTombstones(stored, rStored);
-      setAttendees(filtered.attendees);
-      setRecords(filtered.records);
     }
     setLoading(false);
   }, [synced, applyTombstones]);
@@ -235,7 +223,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const todayRecords = records.filter(r => new Date(r.timestamp).toDateString() === new Date().toDateString());
 
-  // ── Attendees Functions ──
   const addAttendeeFn = useCallback(async (data: Omit<Attendee, 'id' | 'createdAt'>) => {
     const attendee: Attendee = { 
       ...data, 
@@ -287,11 +274,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const deleteAttendeeFn = useCallback(async (id: string) => {
     deletedAttendeeIdsRef.current.add(id);
-    lsSetSet(LS_DELETED_ATTENDEES, deletedAttendeeIdsRef.current);
-
     setAttendees(prev => prev.filter(a => a.id !== id));
-    const next = lsGet<Attendee>(LS_ATTENDEES).filter(a => a.id !== id);
-    lsSet(LS_ATTENDEES, next);
     mutationCooldownRef.current = Date.now();
 
     if (synced) {
@@ -306,7 +289,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const getAttendeeById = useCallback((id: string) => attendees.find(a => a.id === id), [attendees]);
 
-  // ── Records Functions ──
   const addRecordFn = useCallback(async (attendee: Attendee, type: 'check-in' | 'check-out'): Promise<AttendanceRecord> => {
     const record: AttendanceRecord = {
       id: uuidv4(),
@@ -318,8 +300,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       type,
     };
     setRecords(prev => [record, ...prev]);
-    const next = [record, ...lsGet<AttendanceRecord>(LS_RECORDS)];
-    lsSet(LS_RECORDS, next);
     mutationCooldownRef.current = Date.now();
 
     if (synced) {
@@ -336,7 +316,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const checkInAttendeeFn = useCallback(async (attendeeId: string) => {
     const attendee = attendees.find(a => a.id === attendeeId);
     if (!attendee) return undefined;
-
     return await addRecordFn(attendee, 'check-in');
   }, [attendees, addRecordFn]);
 
@@ -374,10 +353,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const clearRecordsFn = useCallback(async () => {
     records.forEach(r => deletedRecordIdsRef.current.add(r.id));
-    lsSetSet(LS_DELETED_RECORDS, deletedRecordIdsRef.current);
-
     setRecords([]);
-    lsSet(LS_RECORDS, []);
     mutationCooldownRef.current = Date.now();
 
     if (synced) {
@@ -395,7 +371,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [todayRecords]
   );
 
-  // ── Event Config Function (Preserves & Deep-merges formFields) ──
   const updateEventConfigFn = useCallback(async (config: EventConfig) => {
     setEventConfig(prev => {
       const mergedConfig: EventConfig = {
@@ -424,6 +399,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     <DataContext.Provider
       value={{
         attendees,
+        dataAttendees,
         records,
         todayRecords,
         eventConfig,
